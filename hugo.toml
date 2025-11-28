@@ -1,0 +1,112 @@
+baseURL = 'https://your-github-username.github.io/'
+title = 'XFFF 的独立博客'
+languageCode = 'zh-cn'
+defaultContentLanguage = 'zh-cn'
+hasCJKLanguage = true
+theme = 'hugo-theme-stack'
+
+copyright = '© {year} XFFF'
+
+[permalinks]
+  post = '/p/:slug/'
+  page = '/:slug/'
+
+[params]
+  mainSections = ['post']
+  featuredImageField = 'image'
+  rssFullContent = true
+
+[params.dateFormat]
+  published = '2006-01-02'
+  lastUpdated = '2006-01-02 15:04 MST'
+
+[params.sidebar]
+  emoji = '🚀'
+  subtitle = '记录独立开发与 AI 学习的点滴'
+  [params.sidebar.avatar]
+    enabled = true
+    local = true
+    src = 'img/avatar.png'
+
+[params.footer]
+  since = 2024
+  customText = '用 Hugo + GitHub Pages 驱动'
+
+[params.article]
+  math = false
+  toc = true
+  readingTime = true
+  [params.article.license]
+    enabled = true
+    default = 'CC BY-NC 4.0'
+
+[params.comments]
+  enabled = false
+  provider = ''
+
+[params.widgets]
+  [[params.widgets.homepage]]
+    type = 'search'
+  [[params.widgets.homepage]]
+    type = 'archives'
+    [params.widgets.homepage.params]
+      limit = 5
+  [[params.widgets.homepage]]
+    type = 'categories'
+    [params.widgets.homepage.params]
+      limit = 10
+  [[params.widgets.homepage]]
+    type = 'tag-cloud'
+    [params.widgets.homepage.params]
+      limit = 15
+  [[params.widgets.page]]
+    type = 'toc'
+
+[params.opengraph.twitter]
+  card = 'summary_large_image'
+
+[params.colorScheme]
+  toggle = true
+  default = 'auto'
+
+[services]
+  [services.googleAnalytics]
+    id = ''
+
+[pagination]
+  pagerSize = 6
+
+[menu]
+
+[[menu.main]]
+  identifier = 'about'
+  name = '关于'
+  url = '/page/about/'
+  weight = 1
+
+[[menu.main]]
+  identifier = 'archives'
+  name = '归档'
+  url = '/page/archives/'
+  weight = 2
+
+[[menu.main]]
+  identifier = 'links'
+  name = '友链'
+  url = '/page/links/'
+  weight = 3
+
+[[menu.social]]
+  identifier = 'github'
+  name = 'GitHub'
+  url = 'https://0607pass.github.io/'
+  [menu.social.params]
+    icon = 'brand-github'
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+[markup.highlight]
+    lineNos = true
+    noClasses = false
