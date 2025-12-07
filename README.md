@@ -38,7 +38,7 @@ hugo --minify
 ## 配置说明
 
 - 站点基础信息位于 `hugo.toml`，请修改：
-  - `baseURL`：替换为 `https://<你的 GitHub 用户名>.github.io/`
+  - `baseURL`：替换为 `https://<你的 GitHub 用户名>.github.io/<仓库名>/`（例如：`https://0607pass.github.io/Blog/`）
   - `title`、`copyright`
   - `menu.social` 中的 GitHub 链接
 - 需要自定义头像时，替换 `assets/img/avatar.png`
@@ -46,9 +46,9 @@ hugo --minify
 
 ## GitHub Pages 部署
 
-1. 将仓库 push 到 GitHub，分支命名为 `main`
+1. 将仓库 push 到 GitHub，分支命名为 `master`
 2. 启用 Pages：在仓库 `Settings -> Pages` 中选择 `Deploy from a branch`，并设定 `gh-pages`
-3. Workflow 文件 `.github/workflows/deploy.yml` 会在每次 push `main` 时自动：
+3. Workflow 文件 `.github/workflows/deploy.yml` 会在每次 push `master` 时自动：
    - 检出代码（包含主题子模块）
    - 安装指定版本 Hugo
    - 执行 `hugo --minify`

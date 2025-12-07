@@ -1,4 +1,4 @@
-baseURL = 'https://0607pass.github.io/'
+baseURL = 'https://0607pass.github.io/Blog/'
 title = 'XFFF 的独立博客'
 languageCode = 'zh-cn'
 defaultContentLanguage = 'zh-cn'
@@ -99,7 +99,7 @@ copyright = '© {year} XFFF'
 [[menu.social]]
   identifier = 'github'
   name = 'GitHub'
-  url = 'https://0607pass.github.io/'
+  url = 'https://github.com/0607pass'
   [menu.social.params]
     icon = 'brand-github'
 
