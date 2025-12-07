@@ -1,6 +1,6 @@
 +++
 date = '2025-12-07T16:52:54+08:00'
-draft = true
+draft = false
 title = 'Hugo常用命令'
 +++
 
