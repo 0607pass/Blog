@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>你好，我是 XFFF on XFFF 的独立博客</title><link>https://0607pass.github.io/Blog/</link><description>Recent content in 你好，我是 XFFF on XFFF 的独立博客</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><copyright>© {year} XFFF</copyright><lastBuildDate>Sun, 01 Dec 2024 09:00:00 +0800</lastBuildDate><atom:link href="https://0607pass.github.io/Blog/index.xml" rel="self" type="application/rss+xml"/><item><title>2025 产品路线图</title><link>https://0607pass.github.io/Blog/p/2025-%E4%BA%A7%E5%93%81%E8%B7%AF%E7%BA%BF%E5%9B%BE/</link><pubDate>Sun, 01 Dec 2024 09:00:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/2025-%E4%BA%A7%E5%93%81%E8%B7%AF%E7%BA%BF%E5%9B%BE/</guid><description>&lt;p&gt;为了避免盲目忙碌，我把 2025 年的目标拆成三个层次：&lt;/p&gt;
+&lt;h3 id="1-内容与品牌q1"&gt;1. 内容与品牌（Q1）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;每周至少发布 1 篇博客或 Newsletter；&lt;/li&gt;
+&lt;li&gt;制定视觉与语气规范，保持一致认知；&lt;/li&gt;
+&lt;li&gt;完成 GitHub Pages + 独立域名联动。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="2-产品与自动化q2-q3"&gt;2. 产品与自动化（Q2-Q3）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;以 Notion/Obsidian 插件为切入口，验证付费意愿；&lt;/li&gt;
+&lt;li&gt;构建 LLM 工作流模板，沉淀复用组件；&lt;/li&gt;
+&lt;li&gt;引入简单的用户反馈系统，持续收集想法。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="3-商业化与生态q4"&gt;3. 商业化与生态（Q4）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;形成 1-2 个稳定的付费渠道（插件 / 课程 / 咨询）；&lt;/li&gt;
+&lt;li&gt;搭建私有社区，与订阅者共创；&lt;/li&gt;
+&lt;li&gt;调整技术栈，纳入更多 Serverless/Edge 能力。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;路线图会随着实践不断迭代，欢迎通过评论或邮件提出建议。&lt;/p&gt;</description></item><item><title>搜索</title><link>https://0607pass.github.io/Blog/%E6%90%9C%E7%B4%A2/</link><pubDate>Thu, 28 Nov 2024 10:45:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E6%90%9C%E7%B4%A2/</guid><description>&lt;p&gt;输入关键词即可在全文范围内检索文章、页面与标签。&lt;/p&gt;</description></item><item><title>友链</title><link>https://0607pass.github.io/Blog/%E5%8F%8B%E9%93%BE/</link><pubDate>Thu, 28 Nov 2024 10:40:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E5%8F%8B%E9%93%BE/</guid><description>&lt;p&gt;欢迎交换友链，请包含以下信息并提交 Issue：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;站点名称与 URL&lt;/li&gt;
+&lt;li&gt;简短介绍（50 字以内）&lt;/li&gt;
+&lt;li&gt;对应头像或 logo（可选）&lt;/li&gt;
+&lt;/ul&gt;</description></item><item><title>归档</title><link>https://0607pass.github.io/Blog/%E5%BD%92%E6%A1%A3/</link><pubDate>Thu, 28 Nov 2024 10:35:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E5%BD%92%E6%A1%A3/</guid><description>&lt;p&gt;所有文章会按年份自动归档，方便快速回顾项目进展与灵感演化。&lt;/p&gt;</description></item><item><title>关于 XFFF</title><link>https://0607pass.github.io/Blog/%E5%85%B3%E4%BA%8E-xfff/</link><pubDate>Thu, 28 Nov 2024 10:30:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E5%85%B3%E4%BA%8E-xfff/</guid><description>&lt;p&gt;你好！我是 &lt;strong&gt;XFFF&lt;/strong&gt;，一名聚焦 AI、自动化与个人产品的独立开发者。过去几年我主要在做：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;将 AI 能力融入日常工具（写作、知识管理、营销自动化）；&lt;/li&gt;
+&lt;li&gt;构建面向垂直行业的微型 SaaS，并打磨运营闭环；&lt;/li&gt;
+&lt;li&gt;研究如何利用内容持续吸引目标用户。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;博客将长期聚焦三个方向：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;技术实践&lt;/strong&gt;：Hugo、前端脚本、云后端、自动化流水线；&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;产品洞察&lt;/strong&gt;：独立产品的调研、定价策略、用户增长；&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;个人成长&lt;/strong&gt;：习惯养成、效率系统以及复盘模板。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;如果想交流合作，欢迎通过 GitHub Issue、电子邮件或社交媒体联系。期待与你一起探索更高效的创作与开发方式。&lt;/p&gt;</description></item><item><title>欢迎来到我的 Hugo 博客</title><link>https://0607pass.github.io/Blog/p/%E6%AC%A2%E8%BF%8E%E6%9D%A5%E5%88%B0%E6%88%91%E7%9A%84-hugo-%E5%8D%9A%E5%AE%A2/</link><pubDate>Thu, 28 Nov 2024 10:00:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/%E6%AC%A2%E8%BF%8E%E6%9D%A5%E5%88%B0%E6%88%91%E7%9A%84-hugo-%E5%8D%9A%E5%AE%A2/</guid><description>&lt;p&gt;开启这个站点的初衷非常直接：为自己的独立开发旅程找到一个&lt;strong&gt;可沉淀、可分享&lt;/strong&gt;的地方。这里会记录：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;每一阶段的产品验证、迭代复盘&lt;/li&gt;
+&lt;li&gt;学习 AI 与自动化工具时踩过的坑&lt;/li&gt;
+&lt;li&gt;打造个人品牌、提升效率的实战经验&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;接下来可以期待的板块包括：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;从零到一&lt;/strong&gt;：分享选题、设计、发布的全过程；&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;技术手记&lt;/strong&gt;：围绕 Hugo、前端脚本、云服务的实践；&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;灵感补给&lt;/strong&gt;：阅读、工具或生活方式带来的启发。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;如果你也在独立开发、内容创作或研究 AI，欢迎通过侧边栏的社交链接交流，一起把点子做成作品。 This blog is built with Hugo Stack theme and deployed on GitHub Pages.&lt;/p&gt;</description></item></channel></rss>
