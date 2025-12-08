@@ -4,6 +4,7 @@ draft = false
 title = 'Spring事务失效的情况'
 tags = ['Spring']
 categories = ['Spring']
+image = "images/postCover/spring.png"
 +++
 
 Spring中比较容易失效的就是通过@Transactional 定义的声明式事务，他在以下几个场景中会导致事务失效，首先，就是Spring的@Transactional是基于Spring的AOP机制实现的，而AOP机制又是基于动态代理实现的。那么如果代理失效了，事务也就会失效。
