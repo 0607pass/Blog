@@ -1,40 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>你好，我是 XFFF on XFFF 的独立博客</title><link>https://0607pass.github.io/Blog/</link><description>Recent content in 你好，我是 XFFF on XFFF 的独立博客</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><copyright>© {year} XFFF</copyright><lastBuildDate>Sun, 07 Dec 2025 16:52:54 +0800</lastBuildDate><atom:link href="https://0607pass.github.io/Blog/index.xml" rel="self" type="application/rss+xml"/><item><title>Hugo常用命令</title><link>https://0607pass.github.io/Blog/p/hugo%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</link><pubDate>Sun, 07 Dec 2025 16:52:54 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/hugo%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</guid><description>&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
-&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
-&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt; 1
-&lt;/span&gt;&lt;span class="lnt"&gt; 2
-&lt;/span&gt;&lt;span class="lnt"&gt; 3
-&lt;/span&gt;&lt;span class="lnt"&gt; 4
-&lt;/span&gt;&lt;span class="lnt"&gt; 5
-&lt;/span&gt;&lt;span class="lnt"&gt; 6
-&lt;/span&gt;&lt;span class="lnt"&gt; 7
-&lt;/span&gt;&lt;span class="lnt"&gt; 8
-&lt;/span&gt;&lt;span class="lnt"&gt; 9
-&lt;/span&gt;&lt;span class="lnt"&gt;10
-&lt;/span&gt;&lt;span class="lnt"&gt;11
-&lt;/span&gt;&lt;span class="lnt"&gt;12
-&lt;/span&gt;&lt;span class="lnt"&gt;13
-&lt;/span&gt;&lt;span class="lnt"&gt;14
-&lt;/span&gt;&lt;span class="lnt"&gt;15
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
-&lt;td class="lntd"&gt;
-&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;hugo new content/post/&lt;span class="s2"&gt;&amp;#34;titile&amp;#34;&lt;/span&gt;/index.md
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 让 Hugo 渲染草稿（draft）内容&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;hugo server -D
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 关闭 Hugo 的“快速渲染”模式 Hugo 在本地预览时有一个优化机制：Fast Render（快速渲染）&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 它只重新渲染你修改过的部分，而不是重新构建整个站点。&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;hugo server --disableFastRender
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 自动部署到github&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;git add .
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;git commit -m &lt;span class="s2"&gt;&amp;#34;commit messages&amp;#34;&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;git push origin master
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 等待自动部署&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
-&lt;/div&gt;
-&lt;/div&gt;</description></item><item><title>Spring事务失效的情况</title><link>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</link><pubDate>Sun, 07 Dec 2025 16:39:20 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</guid><description>&lt;p&gt;Spring中比较容易失效的就是通过@Transactional 定义的声明式事务，他在以下几个场景中会导致事务失效，首先，就是Spring的@Transactional是基于Spring的AOP机制实现的，而AOP机制又是基于动态代理实现的。那么如果代理失效了，事务也就会失效。&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Spring on XFFF 的独立博客</title><link>https://0607pass.github.io/Blog/tags/spring/</link><description>Recent content in Spring on XFFF 的独立博客</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><copyright>© {year} XFFF</copyright><lastBuildDate>Sun, 07 Dec 2025 16:39:20 +0800</lastBuildDate><atom:link href="https://0607pass.github.io/Blog/tags/spring/index.xml" rel="self" type="application/rss+xml"/><item><title>Spring事务失效的情况</title><link>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</link><pubDate>Sun, 07 Dec 2025 16:39:20 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</guid><description>&lt;p&gt;Spring中比较容易失效的就是通过@Transactional 定义的声明式事务，他在以下几个场景中会导致事务失效，首先，就是Spring的@Transactional是基于Spring的AOP机制实现的，而AOP机制又是基于动态代理实现的。那么如果代理失效了，事务也就会失效。&lt;/p&gt;
 &lt;h1 id="什么情况下代理会生效"&gt;什么情况下代理会生效
 &lt;/h1&gt;&lt;h2 id="transactional-应用在非-public-修饰的方法上"&gt;@Transactional 应用在非 public 修饰的方法上
 &lt;/h2&gt;&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
@@ -211,21 +175,4 @@
 &lt;h2 id="事务中用了多线程"&gt;事务中用了多线程
 &lt;/h2&gt;&lt;p&gt;@Transactional 的事务管理使用的是 ThreadLocal 机制来存储事务上下文，而 ThreadLocal 变量是线程隔离的，即每个线程都有自己的事务上下文副本。因此，在多线程环境下，Spring 的声明式事务会失效，即新线程中的操作不会被包含在原有的事务中。&lt;/p&gt;
 &lt;h2 id="数据库不支持事务"&gt;数据库不支持事务
-&lt;/h2&gt;&lt;p&gt;如myisam，不支持的肯定就不行了。&lt;/p&gt;</description></item><item><title>搜索</title><link>https://0607pass.github.io/Blog/%E6%90%9C%E7%B4%A2/</link><pubDate>Thu, 28 Nov 2024 10:45:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E6%90%9C%E7%B4%A2/</guid><description>&lt;p&gt;输入关键词即可在全文范围内检索文章、页面与标签。&lt;/p&gt;</description></item><item><title>友链</title><link>https://0607pass.github.io/Blog/%E5%8F%8B%E9%93%BE/</link><pubDate>Thu, 28 Nov 2024 10:40:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E5%8F%8B%E9%93%BE/</guid><description>&lt;p&gt;欢迎交换友链，请包含以下信息并提交 Issue：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;站点名称与 URL&lt;/li&gt;
-&lt;li&gt;简短介绍（50 字以内）&lt;/li&gt;
-&lt;li&gt;对应头像或 logo（可选）&lt;/li&gt;
-&lt;/ul&gt;</description></item><item><title>归档</title><link>https://0607pass.github.io/Blog/%E5%BD%92%E6%A1%A3/</link><pubDate>Thu, 28 Nov 2024 10:35:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E5%BD%92%E6%A1%A3/</guid><description>&lt;p&gt;所有文章会按年份自动归档，方便快速回顾项目进展与灵感演化。&lt;/p&gt;</description></item><item><title>关于 XFFF</title><link>https://0607pass.github.io/Blog/%E5%85%B3%E4%BA%8E-xfff/</link><pubDate>Thu, 28 Nov 2024 10:30:00 +0800</pubDate><guid>https://0607pass.github.io/Blog/%E5%85%B3%E4%BA%8E-xfff/</guid><description>&lt;p&gt;你好！我是 &lt;strong&gt;XFFF&lt;/strong&gt;，一名聚焦 AI、自动化与个人产品的独立开发者。过去几年我主要在做：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;将 AI 能力融入日常工具（写作、知识管理、营销自动化）；&lt;/li&gt;
-&lt;li&gt;构建面向垂直行业的微型 SaaS，并打磨运营闭环；&lt;/li&gt;
-&lt;li&gt;研究如何利用内容持续吸引目标用户。&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;博客将长期聚焦三个方向：&lt;/p&gt;
-&lt;ol&gt;
-&lt;li&gt;&lt;strong&gt;技术实践&lt;/strong&gt;：Hugo、前端脚本、云后端、自动化流水线；&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;产品洞察&lt;/strong&gt;：独立产品的调研、定价策略、用户增长；&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;个人成长&lt;/strong&gt;：习惯养成、效率系统以及复盘模板。&lt;/li&gt;
-&lt;/ol&gt;
-&lt;p&gt;如果想交流合作，欢迎通过 GitHub Issue、电子邮件或社交媒体联系。期待与你一起探索更高效的创作与开发方式。&lt;/p&gt;</description></item></channel></rss>
+&lt;/h2&gt;&lt;p&gt;如myisam，不支持的肯定就不行了。&lt;/p&gt;</description></item></channel></rss>
