@@ -34,7 +34,7 @@
 &lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 等待自动部署&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
 &lt;/div&gt;
-&lt;/div&gt;</description></item><item><title>Spring事务失效的情况</title><link>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</link><pubDate>Sun, 07 Dec 2025 16:39:20 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</guid><description>&lt;p&gt;Spring中比较容易失效的就是通过@Transactional 定义的声明式事务，他在以下几个场景中会导致事务失效，首先，就是Spring的@Transactional是基于Spring的AOP机制实现的，而AOP机制又是基于动态代理实现的。那么如果代理失效了，事务也就会失效。&lt;/p&gt;
+&lt;/div&gt;</description></item><item><title>Spring事务失效的情况</title><link>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</link><pubDate>Sun, 07 Dec 2025 16:39:20 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/spring%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E7%9A%84%E6%83%85%E5%86%B5/</guid><description>&lt;img src="https://0607pass.github.io/Blog/images/postCover/spring.png" alt="Featured image of post Spring事务失效的情况" /&gt;&lt;p&gt;Spring中比较容易失效的就是通过@Transactional 定义的声明式事务，他在以下几个场景中会导致事务失效，首先，就是Spring的@Transactional是基于Spring的AOP机制实现的，而AOP机制又是基于动态代理实现的。那么如果代理失效了，事务也就会失效。&lt;/p&gt;
 &lt;h1 id="什么情况下代理会生效"&gt;什么情况下代理会生效
 &lt;/h1&gt;&lt;h2 id="transactional-应用在非-public-修饰的方法上"&gt;@Transactional 应用在非 public 修饰的方法上
 &lt;/h2&gt;&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
