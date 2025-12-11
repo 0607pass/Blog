@@ -51,9 +51,7 @@ body {
     margin-bottom: 10px;
 }
 /* 如果图标不存在，使用简单的圆点替代 */
-.highlight:has(+ *) {
-    /* 备用样式 */
-}
+/* 备用样式已移除 */
 
 /* 自定义MD引用块颜色模板 */
 [data-scheme="light"] {
@@ -91,5 +89,137 @@ body {
     .alert-error {
         --card-separator-color: #880000;
         --blockquote-background-color: #450000;
+    }
+}
+
+/* 布局优化：头像靠左，文章变宽，不遮住背景人物 */
+.container.extended {
+    // 缩小左侧边栏宽度，让头像更靠左
+    // 使用固定宽度而不是百分比，让头像更靠左
+    @media (min-width: 768px) {
+        --left-sidebar-max-width: 180px;  // 可调整：缩小此值让头像更靠左（至少180px才能显示暗黑模式按钮）
+        max-width: 1400px;  // 可调整：增大此值让整体更宽
+    }
+
+    @media (min-width: 1024px) {
+        --left-sidebar-max-width: 200px;  // 可调整：缩小此值让头像更靠左
+        max-width: 1600px;  // 可调整：增大此值让整体更宽
+    }
+
+    @media (min-width: 1280px) {
+        --left-sidebar-max-width: 220px;  // 可调整：缩小此值让头像更靠左
+        max-width: 1800px;  // 可调整：增大此值让整体更宽
+    }
+}
+
+// 优化左侧边栏，只保留头像和必要信息
+.left-sidebar {
+    @media (min-width: 768px) {
+        // 隐藏或缩小不必要的元素，让布局更紧凑
+        .site-meta {
+            .site-name {
+                font-size: 1.4rem !important;
+            }
+            .site-description {
+                font-size: 1.2rem !important;
+            }
+        }
+        
+        // 确保暗黑模式切换按钮正常显示
+        #dark-mode-toggle {
+            display: flex !important;
+            align-items: center;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: visible;
+            min-width: fit-content;
+            
+            // 当左侧边栏很窄时，只显示图标，隐藏文字
+            span {
+                @media (max-width: 1279px) {
+                    display: none;
+                }
+            }
+            
+            // 确保图标正常显示
+            svg {
+                flex-shrink: 0;
+            }
+        }
+        
+        // 确保菜单底部区域正常显示
+        .menu-bottom-section {
+            margin-top: auto;
+            width: 100%;
+            
+            ol {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                width: 100%;
+            }
+        }
+        
+        // 确保左侧边栏有足够的最小宽度来显示按钮
+        min-width: 180px;
+        
+        // 菜单项文字溢出处理
+        .menu li {
+            overflow: visible;
+            
+            a {
+                min-width: fit-content;
+            }
+            
+            span {
+                // 在窄边栏中，如果文字太长可以换行或隐藏
+                @media (max-width: 1279px) {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+            }
+        }
+    }
+}
+
+// 增加主内容区宽度（由于左侧边栏缩小，主内容区会自动变宽）
+main.main {
+    @media (min-width: 768px) {
+        // 主内容区占据更多空间
+        flex-grow: 1;
+    }
+}
+
+// 文章卡片内容区域：变宽但确保不遮住右下角人物
+.article-page .main-article {
+    @media (min-width: 768px) {
+        // 设置右侧边距，确保不遮住背景人物（右下角）
+        // 可调整：减小此值让文章更宽（但可能遮住人物），增大此值给人物更多空间
+        margin-right: 8%;  // 默认15%，已减小到8%
+    }
+
+    @media (min-width: 1024px) {
+        margin-right: 6%;  // 默认12%，已减小到6%
+    }
+
+    @media (min-width: 1280px) {
+        margin-right: 5%;  // 默认10%，已减小到5%
+    }
+}
+
+// 首页文章列表也需要考虑右侧边距，与文章详情页保持一致
+.article-list {
+    @media (min-width: 768px) {
+        // 使用与文章详情页相同的右侧边距，确保布局一致
+        margin-right: 8%;  // 与 .article-page .main-article 保持一致
+    }
+
+    @media (min-width: 1024px) {
+        margin-right: 6%;  // 与 .article-page .main-article 保持一致
+    }
+
+    @media (min-width: 1280px) {
+        margin-right: 5%;  // 与 .article-page .main-article 保持一致
     }
 }
