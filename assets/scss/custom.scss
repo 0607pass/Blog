@@ -223,3 +223,47 @@ main.main {
         margin-right: 5%;  // 与 .article-page .main-article 保持一致
     }
 }
+
+/* APlayer 主题适配与吸底留白（恢复全宽底部固定） */
+body {
+    padding-bottom: 180px; // 预留底部空间避免遮挡正文
+}
+#aplayer {
+    z-index: 999;
+    box-shadow: var(--shadow-l2);
+}
+
+[data-scheme="light"] {
+    #aplayer {
+        background: #ffffff;
+        border-top: 1px solid #e5e7eb;
+        .aplayer-list ol li:hover {
+            background: #f3f4f6;
+        }
+    }
+}
+
+[data-scheme="dark"] {
+    #aplayer {
+        background: #1f2937;
+        border-top: 1px solid #374151;
+        color: #e5e7eb;
+
+        .aplayer-info {
+            color: #e5e7eb;
+        }
+        .aplayer-list ol li {
+            color: #e5e7eb;
+        }
+        .aplayer-list ol li.aplayer-list-light,
+        .aplayer-list ol li:hover {
+            background: #111827;
+        }
+        .aplayer-time .aplayer-icon path {
+            fill: #e5e7eb;
+        }
+        .aplayer-info .aplayer-controller .aplayer-time {
+            color: #e5e7eb;
+        }
+    }
+}
