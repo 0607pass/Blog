@@ -178,6 +178,11 @@
     }
 </style>
 
+<!-- APlayer 音乐播放器 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css">
+<div id="aplayer"></div>
+<script src="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js"></script>
+
 <script>
     /**
      * 文章目录折叠&展开初始化
@@ -331,4 +336,113 @@
     initScrollTop();
     initCodeMoreBox();
     initBackground();
+
+    /**
+     * 音乐播放器初始化
+     * 参考：https://letere-gzj.github.io/hugo-stack/p/hugo/custom-player/
+     */
+    (function initAPlayer() {
+        const container = document.getElementById('aplayer');
+        if (!container || !window.APlayer) {
+            return;
+        }
+
+        // 本地资源前缀，encodeURIComponent 处理中文/特殊字符
+        const staticDir = "{{ .Site.Home.Permalink }}";
+        const toUrl = (file) => `${staticDir}mp3/${encodeURIComponent(file)}`;
+
+        // TODO: 替换封面或歌词路径（如有）
+        const audioList = [
+            {
+                name: '查无此字',
+                artist: '林奕匡',
+                url: toUrl('查无此字-林奕匡#eQSOo.mp3'),
+                cover: 'https://picsum.photos/200/200?random=11'
+            },
+            {
+                name: '我怀念的',
+                artist: '孙燕姿',
+                url: toUrl('孙燕姿-我怀念的.mp3'),
+                cover: 'https://picsum.photos/200/200?random=12'
+            },
+            {
+                name: '可惜没如果',
+                artist: '林俊杰',
+                url: toUrl('林俊杰-可惜没如果.mp3'),
+                cover: 'https://picsum.photos/200/200?random=13'
+            },
+            {
+                name: '老男孩',
+                artist: '筷子兄弟',
+                url: toUrl('筷子兄弟-老男孩.mp3'),
+                cover: 'https://picsum.photos/200/200?random=14'
+            }
+        ];
+
+        if (!audioList.length) {
+            return;
+        }
+
+        const STORAGE_KEY = 'aplayer-play-info';
+        let pendingRestore = null;
+
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            pendingRestore = saved ? JSON.parse(saved) : null;
+        } catch (err) {
+            console.error('APlayer restore parse error', err);
+        }
+
+        const ap = new APlayer({
+            container,
+            fixed: true,
+            autoplay: false,
+            lrcType: 0,
+            theme: '#409EFF',
+            audio: audioList
+        });
+
+        /**
+         * 页面销毁前保存播放进度
+         */
+        window.addEventListener('beforeunload', () => {
+            if (!ap.audio) return;
+            const payload = {
+                index: ap.list.index || 0,
+                currentTime: ap.audio.currentTime || 0,
+                paused: ap.audio.paused
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        });
+
+        /**
+         * 恢复播放状态
+         */
+        if (pendingRestore) {
+            const { index = 0, currentTime = 0, paused = true } = pendingRestore;
+            const applyRestore = () => {
+                try {
+                    if (index >= 0 && index < audioList.length) {
+                        ap.list.switch(index);
+                    }
+                    ap.seek(currentTime || 0);
+                    if (paused === false) {
+                        ap.play();
+                    } else {
+                        ap.pause();
+                    }
+                } catch (err) {
+                    console.error('APlayer restore failed', err);
+                } finally {
+                    pendingRestore = null;
+                }
+            };
+
+            // 等待音频可播放后再恢复进度
+            ap.on('canplay', function handleRestore() {
+                ap.off('canplay', handleRestore);
+                applyRestore();
+            });
+        }
+    })();
 </script>
