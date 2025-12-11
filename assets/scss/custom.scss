@@ -245,25 +245,29 @@ body {
 
 [data-scheme="dark"] {
     #aplayer {
-        background: #1f2937;
-        border-top: 1px solid #374151;
-        color: #e5e7eb;
+        /* 按需覆盖为浅色背景，确保黑色文字/按钮可见 */
+        background: #f5f5f5;
+        border-top: 1px solid #d1d5db;
+        color: #111;
 
         .aplayer-info {
-            color: #e5e7eb;
+            color: #111;
         }
         .aplayer-list ol li {
-            color: #e5e7eb;
+            color: #111;
         }
         .aplayer-list ol li.aplayer-list-light,
         .aplayer-list ol li:hover {
-            background: #111827;
+            background: #e5e7eb;
         }
         .aplayer-time .aplayer-icon path {
-            fill: #e5e7eb;
+            fill: #111;
         }
         .aplayer-info .aplayer-controller .aplayer-time {
-            color: #e5e7eb;
+            color: #111;
+        }
+        .aplayer-icon path {
+            fill: #111;
         }
     }
 }
