@@ -182,6 +182,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css">
 <div id="aplayer"></div>
 <script src="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script>
 
 <script>
     /**
@@ -310,38 +311,63 @@
         const particlesScriptUrl = "{{ $particlesScriptURL }}";
         const particlesConfigUrl = "{{ $particlesConfigURL }}";
         if (particlesScriptUrl && particlesConfigUrl) {
-            const particlesContainer = document.createElement("div");
-            particlesContainer.id = "particles-js";
-            document.body.prepend(particlesContainer);
+            // 避免重复创建容器
+            let particlesContainer = document.getElementById("particles-js");
+            if (!particlesContainer) {
+                particlesContainer = document.createElement("div");
+                particlesContainer.id = "particles-js";
+                document.body.prepend(particlesContainer);
+            }
 
-            const particlesScript = document.createElement("script");
-            particlesScript.src = particlesScriptUrl;
-            particlesScript.onload = () => {
-                if (window.particlesJS) {
-                    window.particlesJS.load(
-                        "particles-js",
-                        particlesConfigUrl,
-                        function () {
-                            console.log("particles.js loaded - callback");
-                        }
-                    );
-                }
-            };
-            document.body.appendChild(particlesScript);
+            // 先销毁已有实例，避免叠加导致看起来“变快”
+            if (window.pJSDom && window.pJSDom.length) {
+                window.pJSDom.forEach((p) => {
+                    if (p.pJS && p.pJS.fn && p.pJS.fn.vendors && p.pJS.fn.vendors.destroypJS) {
+                        p.pJS.fn.vendors.destroypJS();
+                    }
+                });
+                window.pJSDom = [];
+            }
+
+            // 避免重复加载脚本
+            if (!window.__particlesScriptLoaded) {
+                window.__particlesScriptLoaded = true;
+                const particlesScript = document.createElement("script");
+                particlesScript.src = particlesScriptUrl;
+                particlesScript.onload = () => {
+                    if (window.particlesJS) {
+                        window.particlesJS.load("particles-js", particlesConfigUrl);
+                    }
+                };
+                document.body.appendChild(particlesScript);
+            } else if (window.particlesJS) {
+                // PJAX 场景下重复加载配置，保持同一实例参数
+                window.particlesJS.load("particles-js", particlesConfigUrl);
+            }
+        }
+    }
+
+    function initAll() {
+        initTocHide();
+        initScrollTop();
+        initCodeMoreBox();
+        initBackground();
+        if (window.Stack && typeof window.Stack.init === 'function') {
+            window.Stack.init();
         }
     }
 
     // 初始化所有功能
-    initTocHide();
-    initScrollTop();
-    initCodeMoreBox();
-    initBackground();
+    initAll();
 
     /**
      * 音乐播放器初始化
      * 参考：https://letere-gzj.github.io/hugo-stack/p/hugo/custom-player/
      */
     (function initAPlayer() {
+        if (window.__aplayerInstance) {
+            return; // 避免重复初始化
+        }
         const container = document.getElementById('aplayer');
         if (!container || !window.APlayer) {
             return;
@@ -354,6 +380,12 @@
         // TODO: 替换封面或歌词路径（如有）
         const audioList = [
             {
+                name: '可惜没如果',
+                artist: '林俊杰',
+                url: toUrl('林俊杰-可惜没如果.mp3'),
+                cover: 'https://picsum.photos/200/200?random=13'
+            },
+            {
                 name: '查无此字',
                 artist: '林奕匡',
                 url: toUrl('查无此字-林奕匡#eQSOo.mp3'),
@@ -364,12 +396,6 @@
                 artist: '孙燕姿',
                 url: toUrl('孙燕姿-我怀念的.mp3'),
                 cover: 'https://picsum.photos/200/200?random=12'
-            },
-            {
-                name: '可惜没如果',
-                artist: '林俊杰',
-                url: toUrl('林俊杰-可惜没如果.mp3'),
-                cover: 'https://picsum.photos/200/200?random=13'
             },
             {
                 name: '老男孩',
@@ -401,11 +427,9 @@
             theme: '#409EFF',
             audio: audioList
         });
+        window.__aplayerInstance = ap;
 
-        /**
-         * 页面销毁前保存播放进度
-         */
-        window.addEventListener('beforeunload', () => {
+        const savePlayInfo = () => {
             if (!ap.audio) return;
             const payload = {
                 index: ap.list.index || 0,
@@ -413,6 +437,17 @@
                 paused: ap.audio.paused
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        };
+
+        /**
+         * 页面销毁/隐藏前保存播放进度（兼容 navigate/back）
+         */
+        window.addEventListener('beforeunload', savePlayInfo);
+        window.addEventListener('pagehide', savePlayInfo);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                savePlayInfo();
+            }
         });
 
         /**
@@ -444,5 +479,22 @@
                 applyRestore();
             });
         }
+    })();
+
+    /**
+     * 初始化 PJAX，保持播放器不销毁，减少导航中断
+     */
+    (function initPjax() {
+        if (window.__pjaxInstance || !window.Pjax) return;
+
+        window.__pjaxInstance = new Pjax({
+            selectors: ["title", ".main-container"],
+            cacheBust: false
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            // 重新挂载页面交互，不重复创建播放器
+            initAll();
+        });
     })();
 </script>
