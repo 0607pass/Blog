@@ -37,6 +37,26 @@
         </div>
     </header>
 
+    {{- with .Site.Menus.social -}}
+        <ol class="menu-social">
+            {{ range . }}
+                <li>
+                    <a 
+                        href='{{ .URL }}'
+                        {{ if eq (default true .Params.newTab) true }}target="_blank"{{ end }}
+                        {{ with .Name }}title="{{ . }}"{{ end }}
+                        rel="me"
+                    >
+                        {{ $icon := default "link" .Params.Icon }}
+                        {{ with $icon }}
+                            {{ partial "helper/icon" . }}
+                        {{ end }}
+                    </a>
+                </li>
+            {{ end }}
+        </ol>
+    {{- end -}}
+
     <ol class="menu" id="main-menu">
         {{ $currentPage := . }}
         {{ $homeURL := .Site.Home.RelPermalink }}
@@ -46,6 +66,32 @@
                 {{ partial "helper/icon" "home" }}
                 <span>{{ T "menu.home" | default "主页 | Home" }}</span>
             </a>
+        </li>
+        {{/* 已删除主菜单项循环，只保留主页和底部按钮 */}}
+        <li class="menu-bottom-section">
+            <ol class="menu">
+                {{- $currentLanguageCode := .Language.Lang -}}
+                {{ if ( compare.Gt .Site.Home.AllTranslations.Len 1 ) }}
+                    {{ with .Site.Home.AllTranslations }}
+                        <li id="i18n-switch">  
+                            {{ partial "helper/icon" "language" }}
+                            <select name="language" title="language" onchange="window.location.href = this.selectedOptions[0].value">
+                                {{ range . }}
+                                    <option value="{{ .Permalink }}" {{ if eq .Language.Lang $currentLanguageCode }}selected{{ end }}>{{ .Language.LanguageName }}</option>
+                                {{ end }}
+                            </select>
+                        </li>
+                    {{ end }}
+                {{ end }}
+
+                {{ if (default false .Site.Params.colorScheme.toggle) }}
+                    <li id="dark-mode-toggle">
+                        {{ partial "helper/icon" "toggle-left" }}
+                        {{ partial "helper/icon" "toggle-right" }}
+                        <span>{{ T "darkMode" }}</span>
+                    </li>
+                {{ end }}
+            </ol>
         </li>
     </ol>
 </aside>
