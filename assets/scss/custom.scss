@@ -1,0 +1,95 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+/* 覆盖文章与全局字体为 IDEA 默认 13pt */
+:root {
+    --base-font-family: "JetBrains Mono", "JetBrains Mono NL", Menlo, Monaco, Consolas, "Courier New", var(--zh-font-family), monospace;
+    --article-font-family: var(--base-font-family);
+    --code-font-family: var(--base-font-family);
+    --article-font-size: 1.73rem; /* 约等于 13pt（17.3px） */
+}
+
+/* 将正文字号同步到 13pt 规格 */
+body {
+    font-size: 1.73rem;
+}
+
+/* 友链、归档多列显示 */
+@media (min-width: 1024px) {
+    .article-list--compact {
+        display: grid;
+        // 目前是两列，如需三列，则后面再加一个1fr，以此类推
+        grid-template-columns: 1fr 1fr;
+        background: none;
+        box-shadow: none;
+        gap: 1rem;
+        article {
+            background: var(--card-background);
+            border: none;
+            box-shadow: var(--shadow-l2);
+            margin-bottom: 8px;
+            margin-right: 8px;
+            border-radius: 16px;
+        }
+    }
+}
+
+/* macOS风格的代码块 */
+.highlight {
+    border-radius: var(--card-border-radius);
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: var(--shadow-l1) !important;
+    position: relative;
+}
+.highlight:before {
+    content: "";
+    display: block;
+    background: url(../icons/macOS-code-header.svg) no-repeat 0;
+    background-size: contain;
+    height: 18px;
+    margin-top: -10px;
+    margin-bottom: 10px;
+}
+/* 如果图标不存在，使用简单的圆点替代 */
+.highlight:has(+ *) {
+    /* 备用样式 */
+}
+
+/* 自定义MD引用块颜色模板 */
+[data-scheme="light"] {
+    .alert-note {
+        --card-separator-color: #65bbee;
+        --blockquote-background-color: #e7f2fa;
+    }
+    .alert-tip {
+        --card-separator-color: #55aa55;
+        --blockquote-background-color: #eeffee;
+    }
+    .alert-warn {
+        --card-separator-color: #ffbb78;
+        --blockquote-background-color: #ffeecc;
+    }
+    .alert-error {
+        --card-separator-color: #cc3334;
+        --blockquote-background-color: #ffeeef;
+    }
+}
+
+[data-scheme="dark"] {
+    .alert-note {
+        --card-separator-color: #006699;
+        --blockquote-background-color: #002234;
+    }
+    .alert-tip {
+        --card-separator-color: #336733;
+        --blockquote-background-color: #112310;
+    }
+    .alert-warn {
+        --card-separator-color: #aa5501;
+        --blockquote-background-color: #452300;
+    }
+    .alert-error {
+        --card-separator-color: #880000;
+        --blockquote-background-color: #450000;
+    }
+}

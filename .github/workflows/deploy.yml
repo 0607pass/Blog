@@ -22,6 +22,13 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Git Configuration
+        run: |
+          git config --global core.quotePath false
+          git config --global core.autocrlf false
+          git config --global core.safecrlf true
+          git config --global core.ignorecase false
+
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
