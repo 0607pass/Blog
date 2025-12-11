@@ -69,6 +69,17 @@ copyright = '© {year} XFFF'
   toggle = true
   default = 'auto'
 
+[params.font]
+  enable = true
+  name = 'CustomFont'
+  file = 'font/custom.ttf'
+
+[params.mouse]
+  enable = false
+  default = 'default.cur'
+  pointer = 'pointer.cur'
+  text = 'text.cur'
+
 [services]
   [services.googleAnalytics]
     id = ''
@@ -103,10 +114,27 @@ copyright = '© {year} XFFF'
   [menu.social.params]
     icon = 'brand-github'
 
+[params.background]
+  enableImage = true
+  image = 'background/bg.jpg'
+  enableSakura = true
+  sakuraScript = 'background/sakura.js'
+  enableParticles = true
+  particlesScript = 'background/particles.min.js'
+  particlesConfig = 'background/particlesjs-config.json'
+
+# 更新时间：优先读取git时间 -> git时间不存在，就读取本地文件修改时间
+[frontmatter]
+  lastmod = ["git", "fileModTime"]
+
+# 允许获取Git信息
+enableGitInfo = true
+
 [markup]
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
 [markup.highlight]
+    style = 'xcode'
     lineNos = true
     noClasses = false

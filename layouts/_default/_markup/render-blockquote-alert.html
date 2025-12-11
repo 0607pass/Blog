@@ -1,0 +1,19 @@
+{{- $alertType := "note" -}}
+{{- if findRE `\[!(NOTE|TIP|WARN|ERROR)\]` .Text 1 -}}
+    {{- if findRE `\[!NOTE\]` .Text 1 -}}
+        {{- $alertType = "note" -}}
+    {{- else if findRE `\[!TIP\]` .Text 1 -}}
+        {{- $alertType = "tip" -}}
+    {{- else if findRE `\[!WARN\]` .Text 1 -}}
+        {{- $alertType = "warn" -}}
+    {{- else if findRE `\[!ERROR\]` .Text 1 -}}
+        {{- $alertType = "error" -}}
+    {{- end -}}
+    <blockquote class="alert alert-{{ $alertType }}">
+        {{- .Text | replaceRE `\[!(NOTE|TIP|WARN|ERROR)\]` "" | markdownify -}}
+    </blockquote>
+{{- else -}}
+    <blockquote>
+        {{- .Text | markdownify -}}
+    </blockquote>
+{{- end -}}

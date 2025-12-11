@@ -1,0 +1,51 @@
+<aside class="sidebar left-sidebar sticky {{ if .Site.Params.sidebar.compact }}compact{{ end }}">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="{{ T `toggleMenu` }}">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        {{ with .Site.Params.sidebar.avatar }}
+            {{ if (default true .enabled) }}
+            <figure class="site-avatar">
+                <a href="{{ .Site.BaseURL | relLangURL }}">
+                {{ if not .local }}
+                    <img src="{{ .src }}" width="300" height="300" class="site-logo" loading="lazy" alt="Avatar">
+                {{ else }}
+                    {{ $avatar := resources.Get (.src) }}
+                    
+                    {{ if $avatar }}
+                        {{ $avatarResized := $avatar.Resize "300x" }}
+                        <img src="{{ $avatarResized.RelPermalink }}" width="{{ $avatarResized.Width }}"
+                            height="{{ $avatarResized.Height }}" class="site-logo" loading="lazy" alt="Avatar">
+                    {{ else }}
+                        {{ errorf "Failed loading avatar from %q" . }}
+                    {{ end }}
+                {{ end }}
+                </a>
+                {{ with $.Site.Params.sidebar.emoji }}
+                    <span class="emoji">{{ . }}</span>
+                {{ end }}
+            </figure>
+            {{ end }}
+        {{ end }}
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="{{ .Site.BaseURL | relLangURL }}">{{ .Site.Title }}</a></h1>
+            <h2 class="site-description">{{ .Site.Params.sidebar.subtitle }}</h2>
+        </div>
+    </header>
+
+    <ol class="menu" id="main-menu">
+        {{ $currentPage := . }}
+        {{ $homeURL := .Site.Home.RelPermalink }}
+        {{ $isHome := $currentPage.IsHome }}
+        <li {{ if $isHome }}class="current"{{ end }}>
+            <a href="{{ $homeURL }}">
+                {{ partial "helper/icon" "home" }}
+                <span>{{ T "menu.home" | default "主页 | Home" }}</span>
+            </a>
+        </li>
+    </ol>
+</aside>
