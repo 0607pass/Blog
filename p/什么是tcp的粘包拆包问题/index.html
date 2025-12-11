@@ -1,0 +1,185 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><meta name=description content="TCP粘包和拆包问题是指在进行TCP通信时，而TCP是面向流的，所以发送方在传输数据时可能会将多个小的数据包粘合在一起发送，而接收方则可能将这些数据包拆分成多个小的数据包进行接收，从而导致数据接收出现错误或者数据粘连的问题。 TCP粘包和拆包问题主要出现在以下两种情况下：\n"><title>什么是TCP的粘包、拆包问题？</title><link rel=canonical href=https://0607pass.github.io/Blog/p/%E4%BB%80%E4%B9%88%E6%98%AFtcp%E7%9A%84%E7%B2%98%E5%8C%85%E6%8B%86%E5%8C%85%E9%97%AE%E9%A2%98/><link rel=stylesheet href=/Blog/scss/style.min.9a706ac349a6f08306203068ddf6c2a30ee5d8f55cac50a5b64281e83b86f572.css><meta property='og:title' content="什么是TCP的粘包、拆包问题？"><meta property='og:description' content="TCP粘包和拆包问题是指在进行TCP通信时，而TCP是面向流的，所以发送方在传输数据时可能会将多个小的数据包粘合在一起发送，而接收方则可能将这些数据包拆分成多个小的数据包进行接收，从而导致数据接收出现错误或者数据粘连的问题。 TCP粘包和拆包问题主要出现在以下两种情况下：\n"><meta property='og:url' content='https://0607pass.github.io/Blog/p/%E4%BB%80%E4%B9%88%E6%98%AFtcp%E7%9A%84%E7%B2%98%E5%8C%85%E6%8B%86%E5%8C%85%E9%97%AE%E9%A2%98/'><meta property='og:site_name' content='XFFF 的独立博客'><meta property='og:type' content='article'><meta property='article:section' content='Post'><meta property='article:tag' content='TCP'><meta property='article:published_time' content='2025-12-09T20:53:37+08:00'><meta property='og:image' content='https://0607pass.github.io/Blog/images/postCover/network.png'><meta name=twitter:title content="什么是TCP的粘包、拆包问题？"><meta name=twitter:description content="TCP粘包和拆包问题是指在进行TCP通信时，而TCP是面向流的，所以发送方在传输数据时可能会将多个小的数据包粘合在一起发送，而接收方则可能将这些数据包拆分成多个小的数据包进行接收，从而导致数据接收出现错误或者数据粘连的问题。 TCP粘包和拆包问题主要出现在以下两种情况下：\n"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content='https://0607pass.github.io/Blog/images/postCover/network.png'></head><body class=article-page><script>(function(){const e="StackColorScheme";localStorage.getItem(e)||localStorage.setItem(e,"auto")})()</script><script>(function(){const t="StackColorScheme",e=localStorage.getItem(t),n=window.matchMedia("(prefers-color-scheme: dark)").matches===!0;e=="dark"||e==="auto"&&n?document.documentElement.dataset.scheme="dark":document.documentElement.dataset.scheme="light"})()</script><div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky"><button class="hamburger hamburger--spin" type=button id=toggle-menu aria-label=切换菜单>
+<span class=hamburger-box><span class=hamburger-inner></span></span></button><header><figure class=site-avatar><a href=/Blog/><img src=/Blog/img/avatar_hu_99759e9126fee3e2.png width=300 height=300 class=site-logo loading=lazy alt=Avatar>
+</a><span class=emoji>🚀</span></figure><div class=site-meta><h1 class=site-name><a href=/Blog>XFFF 的独立博客</a></h1><h2 class=site-description>记录独立开发与 AI 学习的点滴</h2></div></header><ol class=menu id=main-menu><li><a href=/Blog/><svg class="icon icon-tabler icon-tabler-home" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="5 12 3 12 12 3 21 12 19 12"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/><path d="M9 21v-6a2 2 0 012-2h2a2 2 0 012 2v6"/></svg>
+<span>主页 | Home</span></a></li></ol></aside><aside class="sidebar right-sidebar sticky"><section class="widget archives"><div class=widget-icon><svg class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="19" y2="15"/><line x1="11" y1="4" x2="7" y2="20"/><line x1="17" y1="4" x2="13" y2="20"/></svg></div><h2 class="widget-title section-title">目录</h2><div class=widget--toc><nav id=TableOfContents><ul><li><a href=#如何解决>如何解决？？？</a></li><li><a href=#netty如何解决的>Netty如何解决的？</a></li><li><a href=#udp有没有这种情况>UDP有没有这种情况</a></li></ul></nav></div></section></aside><main class="main full-width"><article class="has-image main-article"><header class=article-header><div class=article-image><a href=/Blog/p/%E4%BB%80%E4%B9%88%E6%98%AFtcp%E7%9A%84%E7%B2%98%E5%8C%85%E6%8B%86%E5%8C%85%E9%97%AE%E9%A2%98/><img src=/Blog/images/postCover/network.png loading=lazy alt="Featured image of post 什么是TCP的粘包、拆包问题？"></a></div><div class=article-details><header class=article-category><a href=/Blog/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/>计算机网络</a></header><div class=article-title-wrapper><h2 class=article-title><a href=/Blog/p/%E4%BB%80%E4%B9%88%E6%98%AFtcp%E7%9A%84%E7%B2%98%E5%8C%85%E6%8B%86%E5%8C%85%E9%97%AE%E9%A2%98/>什么是TCP的粘包、拆包问题？</a></h2></div><footer class=article-time><div><svg class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><path d="M11.795 21H5a2 2 0 01-2-2V7a2 2 0 012-2h12a2 2 0 012 2v4"/><circle cx="18" cy="18" r="4"/><path d="M15 3v4"/><path d="M7 3v4"/><path d="M3 11h16"/><path d="M18 16.496V18l1 1"/></svg>
+<time class=article-time--published datetime=2025-12-09T20:53:37+08:00>2025-12-09</time></div><div><svg class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+<time class=article-time--reading>阅读时长: 3 分钟</time></div></footer></div></header><section class=article-content><p>TCP粘包和拆包问题是指在进行TCP通信时，而TCP是面向流的，所以发送方在传输数据时可能会将多个小的数据包粘合在一起发送，而接收方则可能将这些数据包拆分成多个小的数据包进行接收，从而导致数据接收出现错误或者数据粘连的问题。
+TCP粘包和拆包问题主要出现在以下两种情况下：</p><ol><li>发送方连续发送多个小数据包：由于TCP是基于流的协议，发送方在传输数据时可能会将多个小数据包组合成一个大数据包进行发送，从而导致接收方在接收数据时无法区分不同数据包之间的界限。</li><li>接收方缓存区大小限制：接收方在接收数据时，如果接收缓存区的大小有限，可能会将一个大的数据包拆分成多个小数据包进行接收，从而导致粘包和拆包问题的出现。</li></ol><h2 id=如何解决>如何解决？？？</h2><p>对包格式进行约束：</p><ol><li>将业务层协议包的长度固定下来，每个包都固定长度，比如512个字节大小，如果客户端发送的数据长度不足512个字节，则通过补充空格的方式补全到指定长度；</li><li>在每个包的末尾使用固定的分隔符，如换行符/n，如果一个包被拆分了，则等待下一个包发送过来之后找到其中的\n，然后对其拆分后的头部部分与前一个包的剩余部分进行合并即可；</li><li>仿照TCP/IP协议栈，将消息分为header和body，在head中保存有当前整个消息的长度，只有在读取到足够长度的消息之后才算是读到了一个完整的消息；</li><li>通过自定义协议进行粘包和拆包的处理。</li></ol><h2 id=netty如何解决的>Netty如何解决的？</h2><p>以下是基于上述第3点实现的</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span><span class=lnt>62
+</span><span class=lnt>63
+</span><span class=lnt>64
+</span><span class=lnt>65
+</span><span class=lnt>66
+</span><span class=lnt>67
+</span><span class=lnt>68
+</span><span class=lnt>69
+</span><span class=lnt>70
+</span><span class=lnt>71
+</span><span class=lnt>72
+</span><span class=lnt>73
+</span><span class=lnt>74
+</span><span class=lnt>75
+</span><span class=lnt>76
+</span><span class=lnt>77
+</span><span class=lnt>78
+</span><span class=lnt>79
+</span><span class=lnt>80
+</span><span class=lnt>81
+</span><span class=lnt>82
+</span><span class=lnt>83
+</span><span class=lnt>84
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * Create a frame out of the {@link ByteBuf} and return it.
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * @param ctx  the {@link ChannelHandlerContext} which this {@link ByteToMessageDecoder} belongs to
+</span></span></span><span class=line><span class=cl><span class=cm> * @param in   the {@link ByteBuf} from which to read data
+</span></span></span><span class=line><span class=cl><span class=cm> * @return     the {@link ByteBuf} frame, or {@code null} if no frame could be created.
+</span></span></span><span class=line><span class=cl><span class=cm> */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>protected</span><span class=w> </span><span class=n>Object</span><span class=w> </span><span class=nf>decode</span><span class=p>(</span><span class=n>ChannelHandlerContext</span><span class=w> </span><span class=n>ctx</span><span class=p>,</span><span class=w> </span><span class=n>ByteBuf</span><span class=w> </span><span class=n>in</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>Exception</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>long</span><span class=w> </span><span class=n>frameLength</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>0</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// frameLengthInt 是类的成员变量，用于记录当前待切帧的 “目标帧总长度”</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 初始化为 -1 表示 “还没确定当前帧长度 (new frame)”</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>frameLengthInt</span><span class=w> </span><span class=o>==</span><span class=w> </span><span class=o>-</span><span class=n>1</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w> </span><span class=c1>// new frame</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 若之前处于丢弃模式，先执行丢弃逻辑</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>discardingTooLongFrame</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>discardingTooLongFrame</span><span class=p>(</span><span class=n>in</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 缓冲区未到达长度字段结束位置，无法得出帧长 → 等待更多字节</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>in</span><span class=p>.</span><span class=na>readableBytes</span><span class=p>()</span><span class=w> </span><span class=o>&lt;</span><span class=w> </span><span class=n>lengthFieldEndOffset</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>return</span><span class=w> </span><span class=kc>null</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 计算长度字段在缓冲区中的真实偏移</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=kt>int</span><span class=w> </span><span class=n>actualLengthFieldOffset</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>in</span><span class=p>.</span><span class=na>readerIndex</span><span class=p>()</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>lengthFieldOffset</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 读取原始长度值</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>frameLength</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>getUnadjustedFrameLength</span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>in</span><span class=p>,</span><span class=w> </span><span class=n>actualLengthFieldOffset</span><span class=p>,</span><span class=w> </span><span class=n>lengthFieldLength</span><span class=p>,</span><span class=w> </span><span class=n>byteOrder</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 长度值不能为负</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>frameLength</span><span class=w> </span><span class=o>&lt;</span><span class=w> </span><span class=n>0</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>failOnNegativeLengthField</span><span class=p>(</span><span class=n>in</span><span class=p>,</span><span class=w> </span><span class=n>frameLength</span><span class=p>,</span><span class=w> </span><span class=n>lengthFieldEndOffset</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 加上 lengthAdjustment 和 header 长度（lengthFieldEndOffset）</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>frameLength</span><span class=w> </span><span class=o>+=</span><span class=w> </span><span class=n>lengthAdjustment</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>lengthFieldEndOffset</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 校验：整帧长度不应小于 header</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>frameLength</span><span class=w> </span><span class=o>&lt;</span><span class=w> </span><span class=n>lengthFieldEndOffset</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>failOnFrameLengthLessThanLengthFieldEndOffset</span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=n>in</span><span class=p>,</span><span class=w> </span><span class=n>frameLength</span><span class=p>,</span><span class=w> </span><span class=n>lengthFieldEndOffset</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 校验：帧是否超过最大大小</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>frameLength</span><span class=w> </span><span class=o>&gt;</span><span class=w> </span><span class=n>maxFrameLength</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>exceededFrameLength</span><span class=p>(</span><span class=n>in</span><span class=p>,</span><span class=w> </span><span class=n>frameLength</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>return</span><span class=w> </span><span class=kc>null</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 保存最终帧长度（不会溢出，因为已保证 &lt; maxFrameLength）</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>frameLengthInt</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=p>(</span><span class=kt>int</span><span class=p>)</span><span class=w> </span><span class=n>frameLength</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 当前帧长度已确定，检查是否收到全部数据</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>in</span><span class=p>.</span><span class=na>readableBytes</span><span class=p>()</span><span class=w> </span><span class=o>&lt;</span><span class=w> </span><span class=n>frameLengthInt</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 数据不足 → 半包 → 等待更多字节</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=kc>null</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 校验：strip 的字节不应超过帧长度</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>initialBytesToStrip</span><span class=w> </span><span class=o>&gt;</span><span class=w> </span><span class=n>frameLengthInt</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>failOnFrameLengthLessThanInitialBytesToStrip</span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>in</span><span class=p>,</span><span class=w> </span><span class=n>frameLength</span><span class=p>,</span><span class=w> </span><span class=n>initialBytesToStrip</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 跳过 initialBytesToStrip 字节（通常是跳过 header/length-field）</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>in</span><span class=p>.</span><span class=na>skipBytes</span><span class=p>(</span><span class=n>initialBytesToStrip</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// extract frame</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>int</span><span class=w> </span><span class=n>readerIndex</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>in</span><span class=p>.</span><span class=na>readerIndex</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>int</span><span class=w> </span><span class=n>actualFrameLength</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>frameLengthInt</span><span class=w> </span><span class=o>-</span><span class=w> </span><span class=n>initialBytesToStrip</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>ByteBuf</span><span class=w> </span><span class=n>frame</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>extractFrame</span><span class=p>(</span><span class=n>ctx</span><span class=p>,</span><span class=w> </span><span class=n>in</span><span class=p>,</span><span class=w> </span><span class=n>readerIndex</span><span class=p>,</span><span class=w> </span><span class=n>actualFrameLength</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 移动 readerIndex，跳过整帧</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>in</span><span class=p>.</span><span class=na>readerIndex</span><span class=p>(</span><span class=n>readerIndex</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>actualFrameLength</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 重置，准备下一帧</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>frameLengthInt</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=o>-</span><span class=n>1</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>return</span><span class=w> </span><span class=n>frame</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>还有 FixedLengthFrameDecoder (固定包长) DelimiterBasedFrameDecoder(基于分隔符)</p><h2 id=udp有没有这种情况>UDP有没有这种情况</h2><p>不会出现，因为 UDP 是基于“数据报（Datagram）”的消息协议。
+UDP特性：</p><ul><li>有消息边界</li><li>一次读取永远对应一次 sendto() 的包</li><li>要么整包收到</li><li>要么丢包</li><li>不会粘，不会拆</li></ul></section><footer class=article-footer><section class=article-tags><a href=/Blog/tags/tcp/>TCP</a></section><section class=article-copyright><svg class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><path d="M14.5 9a3.5 4 0 100 6"/></svg>
+<span>CC BY-NC 4.0</span></section><section class=article-lastmod><svg class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+<span>最后更新于 0001-01-01 00:00 UTC</span></section></footer></article><footer class=site-footer><section class=copyright>&copy;
+2024 -
+2025 © {year} XFFF</section><section class=powerby>用 Hugo + GitHub Pages 驱动<br>使用 <a href=https://gohugo.io/ target=_blank rel=noopener>Hugo</a> 构建<br>主题 <b><a href=https://github.com/CaiJimmy/hugo-theme-stack target=_blank rel=noopener data-version=3.32.0>Stack</a></b> 由 <a href=https://jimmycai.com target=_blank rel=noopener>Jimmy</a> 设计</section></footer><div class=pswp tabindex=-1 role=dialog aria-hidden=true><div class=pswp__bg></div><div class=pswp__scroll-wrap><div class=pswp__container><div class=pswp__item></div><div class=pswp__item></div><div class=pswp__item></div></div><div class="pswp__ui pswp__ui--hidden"><div class=pswp__top-bar><div class=pswp__counter></div><button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+<button class="pswp__button pswp__button--share" title=Share></button>
+<button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+<button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button><div class=pswp__preloader><div class=pswp__preloader__icn><div class=pswp__preloader__cut><div class=pswp__preloader__donut></div></div></div></div></div><div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap"><div class=pswp__share-tooltip></div></div><button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+</button>
+<button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)"></button><div class=pswp__caption><div class=pswp__caption__center></div></div></div></div></div><script src=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo=" crossorigin=anonymous defer></script><script src=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU=" crossorigin=anonymous defer></script><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css crossorigin=anonymous><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css crossorigin=anonymous></main></div><script src=https://cdn.jsdelivr.net/npm/node-vibrant@3.1.6/dist/vibrant.min.js integrity="sha256-awcR2jno4kI5X0zL8ex0vi2z+KMkF24hUW8WePSA9HM=" crossorigin=anonymous></script><script type=text/javascript src=/Blog/ts/main.c922af694cc257bf1ecc41c0dd7b0430f9114ec280ccf67cd2c6ad55f5316c4e.js defer></script><script>(function(){const e=document.createElement("link");e.href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap",e.type="text/css",e.rel="stylesheet",document.head.appendChild(e)})()</script><style>#TableOfContents>ul,ol{ul, ol { display: none; } .open { display: block; }}#backTopBtn{display:none;position:fixed;bottom:30px;right:30px;z-index:99;cursor:pointer;width:30px;height:30px;background:var(--accent-color);border-radius:50%;background-size:contain;background-repeat:no-repeat}#backTopBtn:before{content:"↑";color:var(--accent-color-text);display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:20px}.highlight{max-height:400px;overflow:hidden;position:relative}.code-show{max-height:none!important}.code-more-box{width:100%;padding-top:78px;background-image:-webkit-gradient(linear,left top,left bottom,from(rgba(255,255,255,0)),to(#fff));position:absolute;left:0;right:0;bottom:0;z-index:1}[data-scheme=dark] .code-more-box{background-image:-webkit-gradient(linear,left top,left bottom,from(rgba(66,66,66,0)),to(#424242))}.code-more-btn{display:block;margin:auto;width:44px;height:22px;background:#f0f0f5;border-top-left-radius:8px;border-top-right-radius:8px;padding-top:6px;cursor:pointer}[data-scheme=dark] .code-more-btn{background:#545454}.code-more-img{cursor:pointer!important;display:block;margin:auto;width:22px;height:16px}body{background:url(https://0607pass.github.io/Blog/background/bg.jpg)no-repeat 50% 0;background-size:cover;background-attachment:fixed}#particles-js{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none}</style><script>function initTocHide(){let e=document.querySelector(".widget--toc");if(!e)return;window.addEventListener("scroll",function(){let n=document.querySelectorAll(".open");n.length>0&&n.forEach(e=>{e.classList.remove("open")});let t=document.querySelector(".active-class");if(!t)return;t.children.length>1&&t.children[1].classList.add("open");let e=t.parentElement;do e.classList.add("open"),e=e.parentElement.parentElement;while(e!==0[0]&&(e.localName==="ul"||e.localName==="ol"))})}function initScrollTop(){let t=document.querySelector(".right-sidebar");if(!t)return;let e=document.createElement("div");e.id="backTopBtn",e.onclick=backToTop,t.appendChild(e),window.onscroll=function(){document.body.scrollTop>20||document.documentElement.scrollTop>20?e.style.display="block":e.style.display="none"}}function backToTop(){window.scrollTo({top:0,behavior:"smooth"})}function initCodeMoreBox(){let e=document.querySelectorAll(".highlight");if(!e)return;e.forEach(e=>{if(e.scrollHeight<=e.clientHeight)return;let n=document.createElement("div");n.classList.add("code-more-box");let t=document.createElement("span");t.classList.add("code-more-btn"),t.addEventListener("click",()=>{e.classList.add("code-show"),n.style.display="none",window.dispatchEvent(new Event("resize"))}),t.style.padding="4px 8px",t.style.fontSize="12px",n.appendChild(t),e.appendChild(n)})}function initBackground(){const e="https://0607pass.github.io/Blog/background/sakura.js";if(e){const t=document.createElement("script");t.src=e,document.body.appendChild(t)}const t="https://0607pass.github.io/Blog/background/particles.min.js",n="https://0607pass.github.io/Blog/background/particlesjs-config.json";if(t&&n){const s=document.createElement("div");s.id="particles-js",document.body.prepend(s);const e=document.createElement("script");e.src=t,e.onload=()=>{window.particlesJS&&window.particlesJS.load("particles-js",n,function(){console.log("particles.js loaded - callback")})},document.body.appendChild(e)}}initTocHide(),initScrollTop(),initCodeMoreBox(),initBackground()</script></body></html>
