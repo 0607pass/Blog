@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(hugo server:*)",
+      "Bash(hugo:*)",
+      "Bash(findstr:*)",
+      "Bash(node -e \"console.log(encodeURIComponent(''查无此字-林奕匡#eQSOo.mp3''))\")",
+      "mcp__chrome-devtools-mcp__new_page",
+      "mcp__chrome-devtools-mcp__take_snapshot",
+      "mcp__chrome-devtools-mcp__click",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "Bash(cat:*)",
+      "Bash(move /Y \"E:\\xfffBlog\\aiBlog\\layouts\\partials\\footer\\custom-new.html\" \"E:\\xfffBlog\\aiBlog\\layouts\\partials\\footer\\custom.html\":*)"
+    ]
+  }
+}
