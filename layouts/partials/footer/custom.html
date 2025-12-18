@@ -114,7 +114,6 @@
 
     /* 代码块折叠样式 */
     .highlight {
-        /* 你可以根据需要调整这个高度 */
         max-height: 400px;
         overflow: hidden;
         position: relative;
@@ -176,6 +175,14 @@
         z-index: -1;
         pointer-events: none;
     }
+
+    /* APlayer 音乐播放器容器 */
+    #aplayer {
+        z-index: 9999;
+    }
+    .aplayer {
+        z-index: 9999 !important;
+    }
 </style>
 
 <!-- APlayer 音乐播放器 -->
@@ -185,39 +192,35 @@
 <script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script>
 
 <script>
+    // 预先定义背景URL常量供JS使用
+    const BG_IMAGE_URL = {{- if and $bg $bg.enableImage $bg.image (resources.Get $bg.image) -}}"{{ (resources.Get $bg.image).Permalink }}"{{- else -}}""{{- end -}};
+    const SAKURA_URL = "{{ $sakuraURL }}";
+    const PARTICLES_SCRIPT_URL = "{{ $particlesScriptURL }}";
+    const PARTICLES_CONFIG_URL = "{{ $particlesConfigURL }}";
+
     /**
      * 文章目录折叠&展开初始化
      */
     function initTocHide() {
-        // 判断是否存在文章目录
         let toc = document.querySelector(".widget--toc");
-        if (!toc) {
-            return;
-        }
-        // 监听滚动
+        if (!toc) return;
+
         window.addEventListener('scroll', function() {
-            //清除class值
             let openUl = document.querySelectorAll(".open");
             if (openUl.length > 0) {
-              openUl.forEach((ul) => {
-                ul.classList.remove("open")
-              })
+                openUl.forEach((ul) => ul.classList.remove("open"));
             }
-            // 获取active-class
             let currentLi = document.querySelector(".active-class");
-            if (!currentLi) {
-                return
-            }
-            // 展示子ul
+            if (!currentLi) return;
+
             if (currentLi.children.length > 1) {
-                currentLi.children[1].classList.add("open")
+                currentLi.children[1].classList.add("open");
             }
-            // 展示父ul
             let ul = currentLi.parentElement;
             do {
                 ul.classList.add("open");
-                ul = ul.parentElement.parentElement
-            } while (ul !== undefined && (ul.localName === 'ul' || ul.localName === 'ol'))
+                ul = ul.parentElement.parentElement;
+            } while (ul !== undefined && (ul.localName === 'ul' || ul.localName === 'ol'));
         });
     }
 
@@ -226,17 +229,14 @@
      */
     function initScrollTop() {
         let rightSideBar = document.querySelector(".right-sidebar");
-        if (!rightSideBar) {
-            return;
-        }
-        // 添加返回顶部按钮到右侧边栏
+        if (!rightSideBar) return;
+
         let btn = document.createElement("div");
         btn.id = "backTopBtn";
-        btn.onclick = backToTop
-        rightSideBar.appendChild(btn)
-        // 滚动监听
+        btn.onclick = backToTop;
+        rightSideBar.appendChild(btn);
+
         window.onscroll = function() {
-            // 当网页向下滑动 20px 出现"返回顶部" 按钮
             if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
                 btn.style.display = "block";
             } else {
@@ -245,11 +245,8 @@
         };
     }
 
-    /**
-     * 返回顶部
-     */
-    function backToTop(){
-        window.scrollTo({ top: 0, behavior: "smooth" })
+    function backToTop() {
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     /**
@@ -257,57 +254,38 @@
      */
     function initCodeMoreBox() {
         let codeBlocks = document.querySelectorAll(".highlight");
-        if (!codeBlocks) {
-            return;
-        }
+        if (!codeBlocks) return;
+
         codeBlocks.forEach(codeBlock => {
-            // 校验是否overflow
-            if (codeBlock.scrollHeight <= codeBlock.clientHeight) {
-                return;
-            }
-            // 元素初始化
-            // codeMoreBox
+            if (codeBlock.scrollHeight <= codeBlock.clientHeight) return;
+
             let codeMoreBox = document.createElement('div');
             codeMoreBox.classList.add('code-more-box');
-            // codeMoreBtn
+
             let codeMoreBtn = document.createElement('span');
             codeMoreBtn.classList.add('code-more-btn');
             codeMoreBtn.addEventListener('click', () => {
                 codeBlock.classList.add('code-show');
                 codeMoreBox.style.display = 'none';
-                // 触发resize事件，重新计算目录位置
-                window.dispatchEvent(new Event('resize'))
-            })
-            // img
-            {{- if (resources.Get "icons/codeMore.png") -}}
-            let img = document.createElement('img');
-            img.classList.add('code-more-img');
-            img.src = {{ (resources.Get "icons/codeMore.png").Permalink }}
-            codeMoreBtn.appendChild(img);
-            {{- else -}}
+                window.dispatchEvent(new Event('resize'));
+            });
+
             codeMoreBtn.textContent = "展开";
             codeMoreBtn.style.padding = "4px 8px";
             codeMoreBtn.style.fontSize = "12px";
-            {{- end -}}
-            // 元素添加
+
             codeMoreBox.appendChild(codeMoreBtn);
-            codeBlock.appendChild(codeMoreBox)
-        })
+            codeBlock.appendChild(codeMoreBox);
+        });
     }
 
     /**
      * 静态/动态背景初始化
      */
     function initBackground() {
-        // 确保静态背景图在 PJAX 导航后正确显示
-        {{- $bgImagePermalink := "" -}}
-        {{- if and $bg $bg.enableImage $bg.image (resources.Get $bg.image) -}}
-        {{- $bgImagePermalink = (resources.Get $bg.image).Permalink -}}
-        {{- end -}}
-        const bgImageUrl = "{{ $bgImagePermalink }}";
-        if (bgImageUrl && document.body) {
-            // 强制重新应用背景样式，确保在 PJAX 导航后背景正常显示
-            document.body.style.backgroundImage = `url(${bgImageUrl})`;
+        // 静态背景图
+        if (BG_IMAGE_URL && document.body) {
+            document.body.style.backgroundImage = `url(${BG_IMAGE_URL})`;
             document.body.style.backgroundRepeat = 'no-repeat';
             document.body.style.backgroundPosition = 'center top';
             document.body.style.backgroundSize = 'cover';
@@ -315,41 +293,22 @@
         }
 
         // Sakura 动态背景
-        const sakuraUrl = "{{ $sakuraURL }}";
-        if (sakuraUrl) {
-            // 在 PJAX 导航时，需要重新初始化 Sakura
-            // 先清理旧的实例（如果存在）
-            if (window.__sakuraInstance) {
-                try {
-                    // 如果 Sakura 有销毁方法，调用它
-                    if (typeof window.__sakuraInstance.destroy === 'function') {
-                        window.__sakuraInstance.destroy();
-                    }
-                } catch (e) {
-                    console.warn('Sakura cleanup error:', e);
-                }
+        if (SAKURA_URL) {
+            if (window.__sakuraInstance && typeof window.__sakuraInstance.destroy === 'function') {
+                try { window.__sakuraInstance.destroy(); } catch(e) {}
             }
-            
-            // 重新加载 Sakura 脚本
-            const existingSakuraScript = document.querySelector('script[src="' + sakuraUrl + '"]');
-            if (existingSakuraScript) {
-                existingSakuraScript.remove();
-            }
-            
+
+            const existingSakuraScript = document.querySelector('script[src="' + SAKURA_URL + '"]');
+            if (existingSakuraScript) existingSakuraScript.remove();
+
             const sakuraScript = document.createElement("script");
-            sakuraScript.src = sakuraUrl;
-            sakuraScript.onload = () => {
-                // 标记 Sakura 已加载
-                window.__sakuraInstance = true;
-            };
+            sakuraScript.src = SAKURA_URL;
+            sakuraScript.onload = () => { window.__sakuraInstance = true; };
             document.body.appendChild(sakuraScript);
         }
 
         // particles.js 动态背景
-        const particlesScriptUrl = "{{ $particlesScriptURL }}";
-        const particlesConfigUrl = "{{ $particlesConfigURL }}";
-        if (particlesScriptUrl && particlesConfigUrl) {
-            // 避免重复创建容器
+        if (PARTICLES_SCRIPT_URL && PARTICLES_CONFIG_URL) {
             let particlesContainer = document.getElementById("particles-js");
             if (!particlesContainer) {
                 particlesContainer = document.createElement("div");
@@ -357,7 +316,6 @@
                 document.body.prepend(particlesContainer);
             }
 
-            // 先销毁已有实例，避免叠加导致看起来“变快”
             if (window.pJSDom && window.pJSDom.length) {
                 window.pJSDom.forEach((p) => {
                     if (p.pJS && p.pJS.fn && p.pJS.fn.vendors && p.pJS.fn.vendors.destroypJS) {
@@ -367,23 +325,20 @@
                 window.pJSDom = [];
             }
 
-            // 避免重复加载脚本
             if (!window.__particlesScriptLoaded) {
                 window.__particlesScriptLoaded = true;
                 const particlesScript = document.createElement("script");
-                particlesScript.src = particlesScriptUrl;
+                particlesScript.src = PARTICLES_SCRIPT_URL;
                 particlesScript.onload = () => {
                     if (window.particlesJS) {
-                        window.particlesJS.load("particles-js", particlesConfigUrl);
+                        window.particlesJS.load("particles-js", PARTICLES_CONFIG_URL);
                     }
                 };
                 document.body.appendChild(particlesScript);
             } else if (window.particlesJS) {
-                // PJAX 场景下重复加载配置，保持同一实例参数
-                // 使用 setTimeout 确保 DOM 已更新
                 setTimeout(() => {
                     if (window.particlesJS && document.getElementById("particles-js")) {
-                        window.particlesJS.load("particles-js", particlesConfigUrl);
+                        window.particlesJS.load("particles-js", PARTICLES_CONFIG_URL);
                     }
                 }, 100);
             }
@@ -405,52 +360,24 @@
 
     /**
      * 音乐播放器初始化
-     * 参考：https://letere-gzj.github.io/hugo-stack/p/hugo/custom-player/
      */
     (function initAPlayer() {
-        if (window.__aplayerInstance) {
-            return; // 避免重复初始化
-        }
-        const container = document.getElementById('aplayer');
-        if (!container || !window.APlayer) {
-            return;
-        }
+        if (window.__aplayerInstance) return;
 
-        // 本地资源前缀，encodeURIComponent 处理中文/特殊字符
+        const container = document.getElementById('aplayer');
+        if (!container || !window.APlayer) return;
+
         const staticDir = "{{ .Site.Home.Permalink }}";
         const toUrl = (file) => `${staticDir}mp3/${encodeURIComponent(file)}`;
 
-        // TODO: 替换封面或歌词路径（如有）
         const audioList = [
-            {
-                name: '可惜没如果',
-                artist: '林俊杰',
-                url: toUrl('林俊杰-可惜没如果.mp3'),
-                cover: 'https://picsum.photos/200/200?random=13'
-            },
-            {
-                name: '查无此字',
-                artist: '林奕匡',
-                url: toUrl('查无此字-林奕匡#eQSOo.mp3'),
-                cover: 'https://picsum.photos/200/200?random=11'
-            },
-            {
-                name: '我怀念的',
-                artist: '孙燕姿',
-                url: toUrl('孙燕姿-我怀念的.mp3'),
-                cover: 'https://picsum.photos/200/200?random=12'
-            },
-            {
-                name: '老男孩',
-                artist: '筷子兄弟',
-                url: toUrl('筷子兄弟-老男孩.mp3'),
-                cover: 'https://picsum.photos/200/200?random=14'
-            }
+            { name: '可惜没如果', artist: '林俊杰', url: toUrl('林俊杰-可惜没如果.mp3'), cover: 'https://picsum.photos/200/200?random=13' },
+            { name: '查无此字', artist: '林奕匡', url: toUrl('查无此字-林奕匡#eQSOo.mp3'), cover: 'https://picsum.photos/200/200?random=11' },
+            { name: '我怀念的', artist: '孙燕姿', url: toUrl('孙燕姿-我怀念的.mp3'), cover: 'https://picsum.photos/200/200?random=12' },
+            { name: '老男孩', artist: '筷子兄弟', url: toUrl('筷子兄弟-老男孩.mp3'), cover: 'https://picsum.photos/200/200?random=14' }
         ];
 
-        if (!audioList.length) {
-            return;
-        }
+        if (!audioList.length) return;
 
         const STORAGE_KEY = 'aplayer-play-info';
         let pendingRestore = null;
@@ -474,61 +401,60 @@
 
         const savePlayInfo = () => {
             if (!ap.audio) return;
-            const payload = {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 index: ap.list.index || 0,
                 currentTime: ap.audio.currentTime || 0,
                 paused: ap.audio.paused
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            }));
         };
 
-        /**
-         * 页面销毁/隐藏前保存播放进度（兼容 navigate/back）
-         */
         window.addEventListener('beforeunload', savePlayInfo);
         window.addEventListener('pagehide', savePlayInfo);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                savePlayInfo();
-            }
+            if (document.visibilityState === 'hidden') savePlayInfo();
         });
 
-        /**
-         * 恢复播放状态
-         */
         if (pendingRestore) {
             const { index = 0, currentTime = 0, paused = true } = pendingRestore;
-            const applyRestore = () => {
-                try {
-                    if (index >= 0 && index < audioList.length) {
-                        ap.list.switch(index);
-                    }
-                    ap.seek(currentTime || 0);
-                    if (paused === false) {
-                        ap.play();
-                    } else {
-                        ap.pause();
-                    }
-                } catch (err) {
-                    console.error('APlayer restore failed', err);
-                } finally {
-                    pendingRestore = null;
-                }
-            };
-
-            // 等待音频可播放后再恢复进度
             ap.on('canplay', function handleRestore() {
                 ap.off('canplay', handleRestore);
-                applyRestore();
+                try {
+                    if (index >= 0 && index < audioList.length) ap.list.switch(index);
+                    ap.seek(currentTime || 0);
+                    paused === false ? ap.play() : ap.pause();
+                } catch (e) {
+                    console.error('APlayer restore failed', e);
+                }
             });
         }
     })();
 
     /**
-     * 初始化 PJAX，保持播放器不销毁，减少导航中断
+     * 初始化 PJAX - 修复 body class 和 background 问题
      */
     (function initPjax() {
         if (window.__pjaxInstance || !window.Pjax) return;
+
+        // 1. 拦截 handleResponse 修复 body class
+        if (window.Pjax && window.Pjax.prototype) {
+            const originalHandleResponse = window.Pjax.prototype.handleResponse;
+            window.Pjax.prototype.handleResponse = function(responseText, request, href, options) {
+                try {
+                    if (request && request.responseText && request.responseText.match('<html')) {
+                        const parser = new DOMParser();
+                        const newDom = parser.parseFromString(request.responseText, 'text/html');
+                        const bodyClass = newDom.body.className;
+
+                        if (bodyClass && document.body.className !== bodyClass) {
+                            document.body.className = bodyClass;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('PJAX handleResponse error:', e);
+                }
+                return originalHandleResponse.call(this, responseText, request, href, options);
+            };
+        }
 
         window.__pjaxInstance = new Pjax({
             selectors: ["title", ".main-container"],
@@ -536,19 +462,32 @@
         });
 
         document.addEventListener('pjax:complete', () => {
-            // 重新挂载页面交互，不重复创建播放器
-            // 使用 setTimeout 确保 DOM 完全更新后再初始化背景
             setTimeout(() => {
-                initAll();
+                // 重新初始化（不包括播放器）
+                initTocHide();
+                initScrollTop();
+                initCodeMoreBox();
+                initBackground();
+                if (window.Stack && typeof window.Stack.init === 'function') {
+                    window.Stack.init();
+                }
             }, 50);
         });
-        
-        // 监听 PJAX 开始事件，确保背景容器在导航过程中保持可见
+
         document.addEventListener('pjax:send', () => {
-            // 确保背景容器在导航过程中仍然存在
+            // 保持 particles 容器可见
             const particlesContainer = document.getElementById("particles-js");
             if (particlesContainer) {
                 particlesContainer.style.display = 'block';
+            }
+
+            // 保持背景样式
+            if (BG_IMAGE_URL && document.body) {
+                document.body.style.backgroundImage = `url(${BG_IMAGE_URL})`;
+                document.body.style.backgroundRepeat = 'no-repeat';
+                document.body.style.backgroundPosition = 'center top';
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundAttachment = 'fixed';
             }
         });
     })();
