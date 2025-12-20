@@ -51,13 +51,13 @@ maxmemory-policy <policy>
 ```
 
 主要分为3 大类
-1. noeviction（默认）： 即不淘汰任何key  内存满了之后，写请求报错，读请求正常
-2. volatile（只淘汰设置了过期时间的 key）
+*  noeviction（默认）： 即不淘汰任何key  内存满了之后，写请求报错，读请求正常
+*  volatile（只淘汰设置了过期时间的 key）
    * volatile-lru
    * volatile-lfu
    * volatile-random
    * volatile-ttl
-3. allkeys（可以淘汰所有 key）
+*  allkeys（可以淘汰所有 key）
    1. allkeys-lru（ 常用）
    2. allkeys-lfu（ Redis 4.0+ 推荐）
    3. allkeys-random
