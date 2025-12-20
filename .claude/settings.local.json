@@ -12,7 +12,18 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebSearch",
       "Bash(cat:*)",
-      "Bash(move /Y \"E:\\xfffBlog\\aiBlog\\layouts\\partials\\footer\\custom-new.html\" \"E:\\xfffBlog\\aiBlog\\layouts\\partials\\footer\\custom.html\":*)"
+      "Bash(move /Y \"E:\\xfffBlog\\aiBlog\\layouts\\partials\\footer\\custom-new.html\" \"E:\\xfffBlog\\aiBlog\\layouts\\partials\\footer\\custom.html\":*)",
+      "mcp__memory__read_graph",
+      "mcp__ide__getDiagnostics",
+      "WebFetch(domain:docs.opengauss.org)",
+      "Bash(mkdir:*)",
+      "Bash(dir:*)",
+      "Bash(taskkill:*)",
+      "Bash(start hugo server:*)",
+      "Bash(if:*)",
+      "Bash(move:*)",
+      "Bash(ren \"Spring AI 集成 OpenGauss 实现 RAG\" \"spring-ai-opengauss-rag\":*)",
+      "Bash(python:*)"
     ]
   }
 }
