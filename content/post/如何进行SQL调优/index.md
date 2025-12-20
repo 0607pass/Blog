@@ -1,11 +1,13 @@
 +++
 date = '2025-12-11T10:48:40+08:00'
-draft = true
+draft = false
 title = '如何进行SQL调优'
 tags = ['MySQL']
 categories = ['DB']
 image = "images/postCover/sql.png"
 +++
+
+
 # 1、如何进行SQL调优
 ## 1.1 定位慢SQL
 首先需要定位到具体的SQL语句，这个可以通过各类监控平台或者工具来实现，通过定位到SQL语句之后，就能知道具体是哪张表、哪个SQL慢了。
