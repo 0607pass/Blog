@@ -1,0 +1,474 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><meta name=description content="1、前言 最近在做 RAG 项目时，发现很多人还在用 PGVector 或者 Milvus，其实国产数据库 OpenGauss 的向量能力已经相当成熟了。特别是它的向量索引和查询优化，在生产环境的表现比预期要好不少。\n"><title>Spring AI 1.1.0 集成 OpenGauss 向量数据库实现 RAG 检索</title><link rel=canonical href=https://0607pass.github.io/Blog/p/spring-ai-1.1.0-%E9%9B%86%E6%88%90-opengauss-%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AE%9E%E7%8E%B0-rag-%E6%A3%80%E7%B4%A2/><link rel=stylesheet href=/Blog/scss/style.min.dfff3e85e1b089d3ffb7989c6a0d6c7657148ae86220ad22340ec6971a2e21f4.css><meta property='og:title' content="Spring AI 1.1.0 集成 OpenGauss 向量数据库实现 RAG 检索"><meta property='og:description' content="1、前言 最近在做 RAG 项目时，发现很多人还在用 PGVector 或者 Milvus，其实国产数据库 OpenGauss 的向量能力已经相当成熟了。特别是它的向量索引和查询优化，在生产环境的表现比预期要好不少。\n"><meta property='og:url' content='https://0607pass.github.io/Blog/p/spring-ai-1.1.0-%E9%9B%86%E6%88%90-opengauss-%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AE%9E%E7%8E%B0-rag-%E6%A3%80%E7%B4%A2/'><meta property='og:site_name' content='XFFF 的独立博客'><meta property='og:type' content='article'><meta property='article:section' content='Post'><meta property='article:tag' content='RAG'><meta property='article:tag' content='SpringAI'><meta property='article:published_time' content='2025-12-20T10:19:03+08:00'><meta property='og:image' content='https://0607pass.github.io/Blog/images/postCover/spring.png'><meta name=twitter:title content="Spring AI 1.1.0 集成 OpenGauss 向量数据库实现 RAG 检索"><meta name=twitter:description content="1、前言 最近在做 RAG 项目时，发现很多人还在用 PGVector 或者 Milvus，其实国产数据库 OpenGauss 的向量能力已经相当成熟了。特别是它的向量索引和查询优化，在生产环境的表现比预期要好不少。\n"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content='https://0607pass.github.io/Blog/images/postCover/spring.png'></head><body class=article-page><script>(function(){const e="StackColorScheme";localStorage.getItem(e)||localStorage.setItem(e,"auto")})()</script><script>(function(){const t="StackColorScheme",e=localStorage.getItem(t),n=window.matchMedia("(prefers-color-scheme: dark)").matches===!0;e=="dark"||e==="auto"&&n?document.documentElement.dataset.scheme="dark":document.documentElement.dataset.scheme="light"})()</script><div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky"><button class="hamburger hamburger--spin" type=button id=toggle-menu aria-label=切换菜单>
+<span class=hamburger-box><span class=hamburger-inner></span></span></button><header><figure class=site-avatar><a href=/Blog/><img src=/Blog/img/avatar_hu_99759e9126fee3e2.png width=300 height=300 class=site-logo loading=lazy alt=Avatar>
+</a><span class=emoji>🚀</span></figure><div class=site-meta><h1 class=site-name><a href=/Blog>XFFF 的独立博客</a></h1><h2 class=site-description>记录独立开发与 AI 学习的点滴</h2></div></header><ol class=menu-social><li><a href=https://github.com/0607pass target=_blank title=GitHub rel=me><svg class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6.0 00-1.3-3.2 4.2 4.2.0 00-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3.0 00-6.2.0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2.0 00-.1 3.2A4.6 4.6.0 004 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg></a></li></ol><ol class=menu id=main-menu><li><a href=/Blog/><svg class="icon icon-tabler icon-tabler-home" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="5 12 3 12 12 3 21 12 19 12"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/><path d="M9 21v-6a2 2 0 012-2h2a2 2 0 012 2v6"/></svg>
+<span>主页 | Home</span></a></li><li class=menu-bottom-section><ol class=menu><li id=dark-mode-toggle><svg class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="8" cy="12" r="2"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg>
+<svg class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="16" cy="12" r="2"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg>
+<span>暗色模式</span></li></ol></li></ol></aside><aside class="sidebar right-sidebar sticky"><section class="widget archives"><div class=widget-icon><svg class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="19" y2="15"/><line x1="11" y1="4" x2="7" y2="20"/><line x1="17" y1="4" x2="13" y2="20"/></svg></div><h2 class="widget-title section-title">目录</h2><div class=widget--toc><nav id=TableOfContents><ul><li><a href=#21-向量类型支持>2.1 向量类型支持</a></li><li><a href=#22-索引类型选择>2.2 索引类型选择</a></li><li><a href=#23-相似度计算>2.3 相似度计算</a></li></ul><ul><li><a href=#31-依赖配置>3.1 依赖配置</a></li><li><a href=#32-向量存储实现>3.2 向量存储实现</a></li><li><a href=#33-rag-服务封装>3.3 RAG 服务封装</a></li></ul><ul><li><a href=#41-索引调优>4.1 索引调优</a></li><li><a href=#42-批量操作优化>4.2 批量操作优化</a></li><li><a href=#43-冷热分离>4.3 冷热分离</a></li></ul><ul><li><a href=#51-向量维度不匹配>5.1 向量维度不匹配</a></li><li><a href=#52-驱动兼容性问题>5.2 驱动兼容性问题</a></li><li><a href=#53-内存占用>5.3 内存占用</a></li></ul></nav></div></section></aside><main class="main full-width"><article class="has-image main-article"><header class=article-header><div class=article-image><a href=/Blog/p/spring-ai-1.1.0-%E9%9B%86%E6%88%90-opengauss-%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AE%9E%E7%8E%B0-rag-%E6%A3%80%E7%B4%A2/><img src=/Blog/images/postCover/spring.png loading=lazy alt="Featured image of post Spring AI 1.1.0 集成 OpenGauss 向量数据库实现 RAG 检索"></a></div><div class=article-details><header class=article-category><a href=/Blog/categories/springai/>SpringAI</a></header><div class=article-title-wrapper><h2 class=article-title><a href=/Blog/p/spring-ai-1.1.0-%E9%9B%86%E6%88%90-opengauss-%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AE%9E%E7%8E%B0-rag-%E6%A3%80%E7%B4%A2/>Spring AI 1.1.0 集成 OpenGauss 向量数据库实现 RAG 检索</a></h2></div><footer class=article-time><div><svg class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><path d="M11.795 21H5a2 2 0 01-2-2V7a2 2 0 012-2h12a2 2 0 012 2v4"/><circle cx="18" cy="18" r="4"/><path d="M15 3v4"/><path d="M7 3v4"/><path d="M3 11h16"/><path d="M18 16.496V18l1 1"/></svg>
+<time class=article-time--published datetime=2025-12-20T10:19:03+08:00>2025-12-20</time></div><div><svg class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+<time class=article-time--reading>阅读时长: 5 分钟</time></div></footer></div></header><section class=article-content><h1 id=1前言>1、前言</h1><p>最近在做 RAG 项目时，发现很多人还在用 PGVector 或者 Milvus，其实国产数据库 OpenGauss 的向量能力已经相当成熟了。特别是它的向量索引和查询优化，在生产环境的表现比预期要好不少。</p><p>这篇文章主要记录一下如何用 Spring AI 1.1.0 集成 OpenGauss 的向量检索能力，以及 OpenGauss 在向量存储方面的一些特性。不搞那些虚的，直接上手干。</p><h1 id=2opengauss-向量数据库特性>2、OpenGauss 向量数据库特性</h1><h2 id=21-向量类型支持>2.1 向量类型支持</h2><p>OpenGauss 原生支持三种向量类型，这个设计还挺有意思的：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=c1>-- 浮点向量，最常用，支持到 16000 维
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>id</span><span class=w> </span><span class=n>BIGSERIAL</span><span class=w> </span><span class=k>PRIMARY</span><span class=w> </span><span class=k>KEY</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>content</span><span class=w> </span><span class=nb>TEXT</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>embedding</span><span class=w> </span><span class=n>VECTOR</span><span class=p>(</span><span class=mi>1536</span><span class=p>)</span><span class=w>  </span><span class=c1>-- OpenAI 嵌入维度
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 位向量，适合二进制哈希
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>binary_index</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>id</span><span class=w> </span><span class=nb>BIGINT</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>hash_bits</span><span class=w> </span><span class=n>BITVEC</span><span class=p>(</span><span class=mi>1024</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 稀疏向量，适合高维稀疏场景
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>sparse_data</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>id</span><span class=w> </span><span class=nb>BIGINT</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>features</span><span class=w> </span><span class=n>SPARSEVEC</span><span class=p>(</span><span class=mi>1000000</span><span class=p>)</span><span class=w>  </span><span class=c1>-- 理论维度很大，但非零元素最多 16000 个
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>实际项目中，<code>VECTOR</code> 类型用得最多，特别是配合 OpenAI 的 text-embedding-3-small 或者 bge-small 这类模型，1536 维刚刚好。</p><h2 id=22-索引类型选择>2.2 索引类型选择</h2><p>OpenGauss 提供了四种向量索引，各有适用场景：</p><p><strong>IVFFLAT</strong> - 简单粗暴，适合数据量不大（&lt;100万）的场景</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_ivfflat</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>ivfflat</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>)</span><span class=w> </span><span class=k>WITH</span><span class=w> </span><span class=p>(</span><span class=n>lists</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>100</span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p><strong>IVF-PQ</strong> - 量化压缩，省内存但精度有损失</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_ivf_pq</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>ivfflat</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>WITH</span><span class=w> </span><span class=p>(</span><span class=n>lists</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>100</span><span class=p>,</span><span class=w> </span><span class=k>encoding</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=s1>&#39;pq&#39;</span><span class=p>,</span><span class=w> </span><span class=n>encoding_params</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=s1>&#39;dim=1536,subquant=8&#39;</span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p><strong>HNSW</strong> - 当前最火的图索引，查询快但构建慢</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_hnsw</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>hnsw</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>WITH</span><span class=w> </span><span class=p>(</span><span class=n>m</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>16</span><span class=p>,</span><span class=w> </span><span class=n>ef_construction</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>200</span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p><strong>HNSW-PQ</strong> - HNSW + 量化，平衡型选择</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_hnsw_pq</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>hnsw</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>WITH</span><span class=w> </span><span class=p>(</span><span class=n>m</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>16</span><span class=p>,</span><span class=w> </span><span class=n>ef_construction</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>200</span><span class=p>,</span><span class=w> </span><span class=k>encoding</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=s1>&#39;pq&#39;</span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>生产环境建议：<strong>HNSW</strong> 是最稳妥的选择，虽然构建时间长点，但查询性能确实香。</p><h2 id=23-相似度计算>2.3 相似度计算</h2><p>OpenGauss 支持三种距离算法：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=c1>-- L2 距离（欧氏距离），数值越小越相似
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>SELECT</span><span class=w> </span><span class=o>*</span><span class=w> </span><span class=k>FROM</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>ORDER</span><span class=w> </span><span class=k>BY</span><span class=w> </span><span class=n>embedding</span><span class=w> </span><span class=o>&lt;-&gt;</span><span class=w> </span><span class=s1>&#39;[0.1,0.2,...]&#39;</span><span class=w> </span><span class=k>LIMIT</span><span class=w> </span><span class=mi>5</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 余弦距离，数值越小越相似（注意是距离，不是相似度）
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>SELECT</span><span class=w> </span><span class=o>*</span><span class=w> </span><span class=k>FROM</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>ORDER</span><span class=w> </span><span class=k>BY</span><span class=w> </span><span class=n>embedding</span><span class=w> </span><span class=o>&lt;=&gt;</span><span class=w> </span><span class=s1>&#39;[0.1,0.2,...]&#39;</span><span class=w> </span><span class=k>LIMIT</span><span class=w> </span><span class=mi>5</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 内积，数值越大越相似
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>SELECT</span><span class=w> </span><span class=o>*</span><span class=w> </span><span class=k>FROM</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>ORDER</span><span class=w> </span><span class=k>BY</span><span class=w> </span><span class=n>embedding</span><span class=w> </span><span class=o>&lt;#&gt;</span><span class=w> </span><span class=s1>&#39;[0.1,0.2,...]&#39;</span><span class=w> </span><span class=k>LIMIT</span><span class=w> </span><span class=mi>5</span><span class=p>;</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>如果是用 OpenAI 或者 BGE 系列的嵌入向量，推荐用余弦距离（<code>&lt;=></code>），因为这些模型训练时就是优化余弦相似度。</p><h1 id=3spring-ai-110-集成实战>3、Spring AI 1.1.0 集成实战</h1><h2 id=31-依赖配置>3.1 依赖配置</h2><p>Spring AI 1.1.0 对 OpenGauss 的支持还在完善中，目前需要通过 JDBC 方式接入：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-xml data-lang=xml><span class=line><span class=cl><span class=nt>&lt;dependencies&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=c>&lt;!-- Spring AI 核心 --&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&lt;dependency&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;groupId&gt;</span>org.springframework.ai<span class=nt>&lt;/groupId&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;artifactId&gt;</span>spring-ai-core<span class=nt>&lt;/artifactId&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;version&gt;</span>1.1.0<span class=nt>&lt;/version&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&lt;/dependency&gt;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c>&lt;!-- 数据库连接 --&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&lt;dependency&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;groupId&gt;</span>org.postgresql<span class=nt>&lt;/groupId&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;artifactId&gt;</span>postgresql<span class=nt>&lt;/artifactId&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;version&gt;</span>42.7.2<span class=nt>&lt;/version&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&lt;/dependency&gt;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c>&lt;!-- 连接池 --&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&lt;dependency&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;groupId&gt;</span>com.zaxxer<span class=nt>&lt;/groupId&gt;</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&lt;artifactId&gt;</span>HikariCP<span class=nt>&lt;/artifactId&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&lt;/dependency&gt;</span>
+</span></span><span class=line><span class=cl><span class=nt>&lt;/dependencies&gt;</span>
+</span></span></code></pre></td></tr></table></div></div><p>注意：OpenGauss 的 JDBC 驱动和 PostgreSQL 兼容，直接用 PG 的驱动就行。</p><h2 id=32-向量存储实现>3.2 向量存储实现</h2><p>Spring AI 的 <code>VectorStore</code> 接口需要自己实现，这里给个完整的例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=nd>@Component</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>OpenGaussVectorStore</span><span class=w> </span><span class=kd>implements</span><span class=w> </span><span class=n>VectorStore</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>private</span><span class=w> </span><span class=kd>final</span><span class=w> </span><span class=n>JdbcTemplate</span><span class=w> </span><span class=n>jdbcTemplate</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>private</span><span class=w> </span><span class=kd>final</span><span class=w> </span><span class=n>EmbeddingClient</span><span class=w> </span><span class=n>embeddingClient</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=nf>OpenGaussVectorStore</span><span class=p>(</span><span class=n>JdbcTemplate</span><span class=w> </span><span class=n>jdbcTemplate</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                               </span><span class=n>EmbeddingClient</span><span class=w> </span><span class=n>embeddingClient</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>jdbcTemplate</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>jdbcTemplate</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>embeddingClient</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>embeddingClient</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>add</span><span class=p>(</span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;</span><span class=w> </span><span class=n>documents</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>for</span><span class=w> </span><span class=p>(</span><span class=n>Document</span><span class=w> </span><span class=n>doc</span><span class=w> </span><span class=p>:</span><span class=w> </span><span class=n>documents</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=c1>// 生成嵌入向量</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=kt>float</span><span class=o>[]</span><span class=w> </span><span class=n>embedding</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>embeddingClient</span><span class=p>.</span><span class=na>embed</span><span class=p>(</span><span class=n>doc</span><span class=p>.</span><span class=na>getText</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=c1>// 存入数据库</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>jdbcTemplate</span><span class=p>.</span><span class=na>update</span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=s>&#34;INSERT INTO documents (content, embedding, metadata) VALUES (?, ?, ?)&#34;</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>doc</span><span class=p>.</span><span class=na>getText</span><span class=p>(),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=k>new</span><span class=w> </span><span class=n>Vector</span><span class=p>(</span><span class=n>embedding</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>doc</span><span class=p>.</span><span class=na>getMetadata</span><span class=p>().</span><span class=na>toString</span><span class=p>()</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;</span><span class=w> </span><span class=nf>similaritySearch</span><span class=p>(</span><span class=n>SearchRequest</span><span class=w> </span><span class=n>request</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=kt>float</span><span class=o>[]</span><span class=w> </span><span class=n>queryEmbedding</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>embeddingClient</span><span class=p>.</span><span class=na>embed</span><span class=p>(</span><span class=n>request</span><span class=p>.</span><span class=na>getQuery</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>String</span><span class=w> </span><span class=n>sql</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=s>&#34;&#34;&#34;
+</span></span></span><span class=line><span class=cl><span class=s>            SELECT id, content, metadata, embedding &lt;=&gt; ? as distance
+</span></span></span><span class=line><span class=cl><span class=s>            FROM documents
+</span></span></span><span class=line><span class=cl><span class=s>            ORDER BY embedding &lt;=&gt; ?
+</span></span></span><span class=line><span class=cl><span class=s>            LIMIT ?
+</span></span></span><span class=line><span class=cl><span class=s>            &#34;&#34;&#34;</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=n>jdbcTemplate</span><span class=p>.</span><span class=na>query</span><span class=p>(</span><span class=n>sql</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>(</span><span class=n>rs</span><span class=p>,</span><span class=w> </span><span class=n>rowNum</span><span class=p>)</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>Document</span><span class=w> </span><span class=n>doc</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>Document</span><span class=p>(</span><span class=n>rs</span><span class=p>.</span><span class=na>getString</span><span class=p>(</span><span class=s>&#34;content&#34;</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>doc</span><span class=p>.</span><span class=na>getMetadata</span><span class=p>().</span><span class=na>put</span><span class=p>(</span><span class=s>&#34;id&#34;</span><span class=p>,</span><span class=w> </span><span class=n>rs</span><span class=p>.</span><span class=na>getLong</span><span class=p>(</span><span class=s>&#34;id&#34;</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=n>doc</span><span class=p>.</span><span class=na>getMetadata</span><span class=p>().</span><span class=na>put</span><span class=p>(</span><span class=s>&#34;distance&#34;</span><span class=p>,</span><span class=w> </span><span class=n>rs</span><span class=p>.</span><span class=na>getFloat</span><span class=p>(</span><span class=s>&#34;distance&#34;</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=k>return</span><span class=w> </span><span class=n>doc</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>},</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>new</span><span class=w> </span><span class=n>Vector</span><span class=p>(</span><span class=n>queryEmbedding</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>new</span><span class=w> </span><span class=n>Vector</span><span class=p>(</span><span class=n>queryEmbedding</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>request</span><span class=p>.</span><span class=na>getTopK</span><span class=p>()</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>delete</span><span class=p>(</span><span class=n>List</span><span class=o>&lt;</span><span class=n>String</span><span class=o>&gt;</span><span class=w> </span><span class=n>docIds</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>String</span><span class=w> </span><span class=n>sql</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=s>&#34;DELETE FROM documents WHERE id = ?&#34;</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>for</span><span class=w> </span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>id</span><span class=w> </span><span class=p>:</span><span class=w> </span><span class=n>docIds</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>jdbcTemplate</span><span class=p>.</span><span class=na>update</span><span class=p>(</span><span class=n>sql</span><span class=p>,</span><span class=w> </span><span class=n>Long</span><span class=p>.</span><span class=na>parseLong</span><span class=p>(</span><span class=n>id</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>这里有个小坑：Spring AI 的 <code>Vector</code> 类型需要自己处理，OpenGauss 的 JDBC 驱动对向量类型支持还不够完善，建议用 <code>float[]</code> 数组配合自定义类型处理器。</p><h2 id=33-rag-服务封装>3.3 RAG 服务封装</h2><p>有了向量存储，RAG 服务就简单了：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=nd>@Service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>RagService</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>private</span><span class=w> </span><span class=kd>final</span><span class=w> </span><span class=n>OpenGaussVectorStore</span><span class=w> </span><span class=n>vectorStore</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>private</span><span class=w> </span><span class=kd>final</span><span class=w> </span><span class=n>ChatClient</span><span class=w> </span><span class=n>chatClient</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=nf>RagService</span><span class=p>(</span><span class=n>OpenGaussVectorStore</span><span class=w> </span><span class=n>vectorStore</span><span class=p>,</span><span class=w> </span><span class=n>ChatClient</span><span class=w> </span><span class=n>chatClient</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>vectorStore</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>vectorStore</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>chatClient</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>chatClient</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=n>String</span><span class=w> </span><span class=nf>query</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>question</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 1. 向量检索</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;</span><span class=w> </span><span class=n>documents</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>vectorStore</span><span class=p>.</span><span class=na>similaritySearch</span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>SearchRequest</span><span class=p>.</span><span class=na>query</span><span class=p>(</span><span class=n>question</span><span class=p>).</span><span class=na>withTopK</span><span class=p>(</span><span class=n>5</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 2. 构建提示词</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>String</span><span class=w> </span><span class=n>context</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>documents</span><span class=p>.</span><span class=na>stream</span><span class=p>()</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>.</span><span class=na>map</span><span class=p>(</span><span class=n>Document</span><span class=p>::</span><span class=n>getText</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>.</span><span class=na>collect</span><span class=p>(</span><span class=n>Collectors</span><span class=p>.</span><span class=na>joining</span><span class=p>(</span><span class=s>&#34;\n\n&#34;</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>String</span><span class=w> </span><span class=n>prompt</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>String</span><span class=p>.</span><span class=na>format</span><span class=p>(</span><span class=s>&#34;&#34;&#34;
+</span></span></span><span class=line><span class=cl><span class=s>            基于以下上下文信息回答问题：
+</span></span></span><span class=line><span class=cl><span class=s>
+</span></span></span><span class=line><span class=cl><span class=s>            上下文：
+</span></span></span><span class=line><span class=cl><span class=s>            %s
+</span></span></span><span class=line><span class=cl><span class=s>
+</span></span></span><span class=line><span class=cl><span class=s>            问题：%s
+</span></span></span><span class=line><span class=cl><span class=s>
+</span></span></span><span class=line><span class=cl><span class=s>            请给出准确、简洁的回答。
+</span></span></span><span class=line><span class=cl><span class=s>            &#34;&#34;&#34;</span><span class=p>,</span><span class=w> </span><span class=n>context</span><span class=p>,</span><span class=w> </span><span class=n>question</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 3. 调用大模型</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=n>chatClient</span><span class=p>.</span><span class=na>call</span><span class=p>(</span><span class=n>prompt</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 批量导入文档</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>importDocuments</span><span class=p>(</span><span class=n>List</span><span class=o>&lt;</span><span class=n>String</span><span class=o>&gt;</span><span class=w> </span><span class=n>texts</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>texts</span><span class=p>.</span><span class=na>stream</span><span class=p>()</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>.</span><span class=na>map</span><span class=p>(</span><span class=n>text</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>Document</span><span class=p>(</span><span class=n>text</span><span class=p>))</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>.</span><span class=na>collect</span><span class=p>(</span><span class=n>Collectors</span><span class=p>.</span><span class=na>toList</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>vectorStore</span><span class=p>.</span><span class=na>add</span><span class=p>(</span><span class=n>docs</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h1 id=4性能优化实践>4、性能优化实践</h1><h2 id=41-索引调优>4.1 索引调优</h2><p>在实际测试中，HNSW 索引的参数调优很关键：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=c1>-- m: 每个节点的邻居数，越大越精确但索引越大，通常 16-32
+</span></span></span><span class=line><span class=cl><span class=c1>-- ef_construction: 构建时的搜索范围，越大质量越好但构建慢
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_hnsw_optimized</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>documents</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>hnsw</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>WITH</span><span class=w> </span><span class=p>(</span><span class=n>m</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>24</span><span class=p>,</span><span class=w> </span><span class=n>ef_construction</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>300</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 查询时的扩展因子，越大越精确但查询慢
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>SET</span><span class=w> </span><span class=n>hnsw</span><span class=p>.</span><span class=n>ef_search</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>100</span><span class=p>;</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>实测数据：100万条向量，m=24, ef_construction=300 时，查询延迟在 10-20ms，召回率 95%+。</p><h2 id=42-批量操作优化>4.2 批量操作优化</h2><p>向量插入是性能瓶颈，建议批量处理：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>batchAdd</span><span class=p>(</span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;</span><span class=w> </span><span class=n>documents</span><span class=p>,</span><span class=w> </span><span class=kt>int</span><span class=w> </span><span class=n>batchSize</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>List</span><span class=o>&lt;</span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;&gt;</span><span class=w> </span><span class=n>batches</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>Lists</span><span class=p>.</span><span class=na>partition</span><span class=p>(</span><span class=n>documents</span><span class=p>,</span><span class=w> </span><span class=n>batchSize</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>for</span><span class=w> </span><span class=p>(</span><span class=n>List</span><span class=o>&lt;</span><span class=n>Document</span><span class=o>&gt;</span><span class=w> </span><span class=n>batch</span><span class=w> </span><span class=p>:</span><span class=w> </span><span class=n>batches</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>jdbcTemplate</span><span class=p>.</span><span class=na>batchUpdate</span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=s>&#34;INSERT INTO documents (content, embedding) VALUES (?, ?)&#34;</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>new</span><span class=w> </span><span class=n>BatchPreparedStatementSetter</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>setValues</span><span class=p>(</span><span class=n>PreparedStatement</span><span class=w> </span><span class=n>ps</span><span class=p>,</span><span class=w> </span><span class=kt>int</span><span class=w> </span><span class=n>i</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>SQLException</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=n>Document</span><span class=w> </span><span class=n>doc</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>batch</span><span class=p>.</span><span class=na>get</span><span class=p>(</span><span class=n>i</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=kt>float</span><span class=o>[]</span><span class=w> </span><span class=n>embedding</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>embeddingClient</span><span class=p>.</span><span class=na>embed</span><span class=p>(</span><span class=n>doc</span><span class=p>.</span><span class=na>getText</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=n>ps</span><span class=p>.</span><span class=na>setString</span><span class=p>(</span><span class=n>1</span><span class=p>,</span><span class=w> </span><span class=n>doc</span><span class=p>.</span><span class=na>getText</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=n>ps</span><span class=p>.</span><span class=na>setObject</span><span class=p>(</span><span class=n>2</span><span class=p>,</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>Vector</span><span class=p>(</span><span class=n>embedding</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=kd>public</span><span class=w> </span><span class=kt>int</span><span class=w> </span><span class=nf>getBatchSize</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=k>return</span><span class=w> </span><span class=n>batch</span><span class=p>.</span><span class=na>size</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h2 id=43-冷热分离>4.3 冷热分离</h2><p>对于超大规模数据，可以考虑冷热分离：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=c1>-- 热数据：最近 7 天，用 HNSW 索引
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>documents_hot</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>id</span><span class=w> </span><span class=n>BIGSERIAL</span><span class=w> </span><span class=k>PRIMARY</span><span class=w> </span><span class=k>KEY</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>content</span><span class=w> </span><span class=nb>TEXT</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>embedding</span><span class=w> </span><span class=n>VECTOR</span><span class=p>(</span><span class=mi>1536</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>created_at</span><span class=w> </span><span class=k>TIMESTAMP</span><span class=w> </span><span class=k>DEFAULT</span><span class=w> </span><span class=n>NOW</span><span class=p>()</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_hnsw_hot</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>documents_hot</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>hnsw</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 冷数据：历史数据，用 IVFFLAT 索引省内存
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>documents_cold</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>id</span><span class=w> </span><span class=n>BIGSERIAL</span><span class=w> </span><span class=k>PRIMARY</span><span class=w> </span><span class=k>KEY</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>content</span><span class=w> </span><span class=nb>TEXT</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>embedding</span><span class=w> </span><span class=n>VECTOR</span><span class=p>(</span><span class=mi>1536</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>created_at</span><span class=w> </span><span class=k>TIMESTAMP</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>CREATE</span><span class=w> </span><span class=k>INDEX</span><span class=w> </span><span class=n>idx_ivfflat_cold</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>documents_cold</span><span class=w> </span><span class=k>USING</span><span class=w> </span><span class=n>ivfflat</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>vector_l2_ops</span><span class=p>)</span><span class=w> </span><span class=k>WITH</span><span class=w> </span><span class=p>(</span><span class=n>lists</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>500</span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>查询时先查热表，结果不足再查冷表。</p><h1 id=5踩坑记录>5、踩坑记录</h1><h2 id=51-向量维度不匹配>5.1 向量维度不匹配</h2><p>OpenGauss 创建表时指定了向量维度，插入时必须严格匹配：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=c1>-- 错误：维度不匹配
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>VECTOR</span><span class=p>(</span><span class=mi>768</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>INSERT</span><span class=w> </span><span class=k>INTO</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>VALUES</span><span class=w> </span><span class=p>(</span><span class=s1>&#39;[0.1,0.2]&#39;</span><span class=p>);</span><span class=w>  </span><span class=c1>-- 2维，报错
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>-- 正确：维度一致
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=p>(</span><span class=n>embedding</span><span class=w> </span><span class=n>VECTOR</span><span class=p>(</span><span class=mi>1536</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>INSERT</span><span class=w> </span><span class=k>INTO</span><span class=w> </span><span class=n>docs</span><span class=w> </span><span class=k>VALUES</span><span class=w> </span><span class=p>(</span><span class=nb>ARRAY</span><span class=p>[</span><span class=mi>0</span><span class=p>.</span><span class=mi>1</span><span class=p>,</span><span class=mi>0</span><span class=p>.</span><span class=mi>2</span><span class=p>,...]::</span><span class=nb>float</span><span class=p>[]);</span><span class=w>  </span><span class=c1>-- 1536维
+</span></span></span></code></pre></td></tr></table></div></div><h2 id=52-驱动兼容性问题>5.2 驱动兼容性问题</h2><p>OpenGauss 的向量类型在标准 PG 驱动中不被识别，需要特殊处理：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=c1>// 自定义类型处理器</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>VectorTypeHandler</span><span class=w> </span><span class=kd>implements</span><span class=w> </span><span class=n>TypeHandler</span><span class=o>&lt;</span><span class=kt>float</span><span class=o>[]&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>setParameter</span><span class=p>(</span><span class=n>PreparedStatement</span><span class=w> </span><span class=n>ps</span><span class=p>,</span><span class=w> </span><span class=kt>int</span><span class=w> </span><span class=n>i</span><span class=p>,</span><span class=w> </span><span class=kt>float</span><span class=o>[]</span><span class=w> </span><span class=n>parameter</span><span class=p>,</span><span class=w> </span><span class=n>JdbcType</span><span class=w> </span><span class=n>jdbcType</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>SQLException</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 转换为 PostgreSQL 数组格式</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>String</span><span class=w> </span><span class=n>arrayStr</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>Arrays</span><span class=p>.</span><span class=na>toString</span><span class=p>(</span><span class=n>parameter</span><span class=p>).</span><span class=na>replace</span><span class=p>(</span><span class=s>&#34;[&#34;</span><span class=p>,</span><span class=w> </span><span class=s>&#34;{&#34;</span><span class=p>).</span><span class=na>replace</span><span class=p>(</span><span class=s>&#34;]&#34;</span><span class=p>,</span><span class=w> </span><span class=s>&#34;}&#34;</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>ps</span><span class=p>.</span><span class=na>setObject</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=w> </span><span class=n>arrayStr</span><span class=p>,</span><span class=w> </span><span class=n>Types</span><span class=p>.</span><span class=na>OTHER</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>float</span><span class=o>[]</span><span class=w> </span><span class=nf>getResult</span><span class=p>(</span><span class=n>ResultSet</span><span class=w> </span><span class=n>rs</span><span class=p>,</span><span class=w> </span><span class=n>String</span><span class=w> </span><span class=n>columnName</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>SQLException</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>String</span><span class=w> </span><span class=n>arrayStr</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>rs</span><span class=p>.</span><span class=na>getString</span><span class=p>(</span><span class=n>columnName</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=n>parseVector</span><span class=p>(</span><span class=n>arrayStr</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h2 id=53-内存占用>5.3 内存占用</h2><p>HNSW 索引虽然查询快，但内存占用不小。100万条 1536 维向量，大约需要 8-10GB 内存。如果内存紧张，可以考虑：</p><ul><li>用 IVF-PQ 压缩</li><li>降低向量维度（用 PCA 降维）</li><li>分片存储</li></ul><h1 id=6总结>6、总结</h1><p>OpenGauss 的向量能力确实不错，特别是 HNSW 索引的性能表现。和 Spring AI 集成时，主要工作量在 JDBC 驱动适配和类型处理上。</p><p>相比其他向量数据库，OpenGauss 的优势在于：</p><ul><li>原生 SQL 支持，学习成本低</li><li>事务一致性，数据可靠性高</li><li>国产化，合规性好</li></ul><p>缺点是生态还在完善中，一些高级功能需要自己造轮子。</p><p>对于想在现有系统中加入 RAG 能力的团队，OpenGauss 是个不错的选择，特别是已经在用 PG 或者 OpenGauss 的场景，迁移成本很低。</p><p>代码示例和完整项目结构，可以参考上面的实现思路，根据具体业务调整即可。</p></section><footer class=article-footer><section class=article-tags><a href=/Blog/tags/rag/>RAG</a>
+<a href=/Blog/tags/springai/>SpringAI</a></section><section class=article-copyright><svg class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><path d="M14.5 9a3.5 4 0 100 6"/></svg>
+<span>CC BY-NC 4.0</span></section><section class=article-lastmod><svg class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+<span>最后更新于 0001-01-01 00:00 UTC</span></section></footer></article><footer class=site-footer><section class=copyright>&copy;
+2024 -
+2025 © {year} XFFF</section><section class=powerby>用 Hugo + GitHub Pages 驱动<br>使用 <a href=https://gohugo.io/ target=_blank rel=noopener>Hugo</a> 构建<br>主题 <b><a href=https://github.com/CaiJimmy/hugo-theme-stack target=_blank rel=noopener data-version=3.32.0>Stack</a></b> 由 <a href=https://jimmycai.com target=_blank rel=noopener>Jimmy</a> 设计</section></footer><div class=pswp tabindex=-1 role=dialog aria-hidden=true><div class=pswp__bg></div><div class=pswp__scroll-wrap><div class=pswp__container><div class=pswp__item></div><div class=pswp__item></div><div class=pswp__item></div></div><div class="pswp__ui pswp__ui--hidden"><div class=pswp__top-bar><div class=pswp__counter></div><button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+<button class="pswp__button pswp__button--share" title=Share></button>
+<button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+<button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button><div class=pswp__preloader><div class=pswp__preloader__icn><div class=pswp__preloader__cut><div class=pswp__preloader__donut></div></div></div></div></div><div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap"><div class=pswp__share-tooltip></div></div><button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+</button>
+<button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)"></button><div class=pswp__caption><div class=pswp__caption__center></div></div></div></div></div><script src=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo=" crossorigin=anonymous defer></script><script src=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU=" crossorigin=anonymous defer></script><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css crossorigin=anonymous><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css crossorigin=anonymous></main></div><script src=https://cdn.jsdelivr.net/npm/node-vibrant@3.1.6/dist/vibrant.min.js integrity="sha256-awcR2jno4kI5X0zL8ex0vi2z+KMkF24hUW8WePSA9HM=" crossorigin=anonymous></script><script type=text/javascript src=/Blog/ts/main.c922af694cc257bf1ecc41c0dd7b0430f9114ec280ccf67cd2c6ad55f5316c4e.js defer></script><script>(function(){const e=document.createElement("link");e.href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap",e.type="text/css",e.rel="stylesheet",document.head.appendChild(e)})()</script><style>#TableOfContents>ul,ol{ul, ol { display: none; } .open { display: block; }}#backTopBtn{display:none;position:fixed;bottom:30px;right:30px;z-index:99;cursor:pointer;width:30px;height:30px;background:var(--accent-color);border-radius:50%;background-size:contain;background-repeat:no-repeat}#backTopBtn:before{content:"↑";color:var(--accent-color-text);display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:20px}.highlight{max-height:400px;overflow:hidden;position:relative}.code-show{max-height:none!important}.code-more-box{width:100%;padding-top:78px;background-image:-webkit-gradient(linear,left top,left bottom,from(rgba(255,255,255,0)),to(#fff));position:absolute;left:0;right:0;bottom:0;z-index:1}[data-scheme=dark] .code-more-box{background-image:-webkit-gradient(linear,left top,left bottom,from(rgba(66,66,66,0)),to(#424242))}.code-more-btn{display:block;margin:auto;width:44px;height:22px;background:#f0f0f5;border-top-left-radius:8px;border-top-right-radius:8px;padding-top:6px;cursor:pointer}[data-scheme=dark] .code-more-btn{background:#545454}.code-more-img{cursor:pointer!important;display:block;margin:auto;width:22px;height:16px}body{background:url(https://0607pass.github.io/Blog/background/bg.jpg)no-repeat 50% 0;background-size:cover;background-attachment:fixed}#particles-js{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none}#aplayer{z-index:9999}.aplayer{z-index:9999!important}</style><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css><div id=aplayer></div><script src=https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js></script><script src=https://cdn.jsdelivr.net/npm/pjax/pjax.min.js></script><script>const BG_IMAGE_URL="https://0607pass.github.io/Blog/background/bg.jpg",SAKURA_URL="https://0607pass.github.io/Blog/background/sakura.js",PARTICLES_SCRIPT_URL="https://0607pass.github.io/Blog/background/particles.min.js",PARTICLES_CONFIG_URL="https://0607pass.github.io/Blog/background/particlesjs-config.json";function initTocHide(){let e=document.querySelector(".widget--toc");if(!e)return;window.addEventListener("scroll",function(){let n=document.querySelectorAll(".open");n.length>0&&n.forEach(e=>e.classList.remove("open"));let t=document.querySelector(".active-class");if(!t)return;t.children.length>1&&t.children[1].classList.add("open");let e=t.parentElement;do e.classList.add("open"),e=e.parentElement.parentElement;while(e!==0[0]&&(e.localName==="ul"||e.localName==="ol"))})}function initScrollTop(){let t=document.querySelector(".right-sidebar");if(!t)return;let e=document.createElement("div");e.id="backTopBtn",e.onclick=backToTop,t.appendChild(e),window.onscroll=function(){document.body.scrollTop>20||document.documentElement.scrollTop>20?e.style.display="block":e.style.display="none"}}function backToTop(){window.scrollTo({top:0,behavior:"smooth"})}function initCodeMoreBox(){let e=document.querySelectorAll(".highlight");if(!e)return;e.forEach(e=>{if(e.scrollHeight<=e.clientHeight)return;let n=document.createElement("div");n.classList.add("code-more-box");let t=document.createElement("span");t.classList.add("code-more-btn"),t.addEventListener("click",()=>{e.classList.add("code-show"),n.style.display="none",window.dispatchEvent(new Event("resize"))}),t.textContent="展开",t.style.padding="4px 8px",t.style.fontSize="12px",n.appendChild(t),e.appendChild(n)})}function initBackground(){if(BG_IMAGE_URL&&document.body&&(document.body.style.backgroundImage=`url(${BG_IMAGE_URL})`,document.body.style.backgroundRepeat="no-repeat",document.body.style.backgroundPosition="center top",document.body.style.backgroundSize="cover",document.body.style.backgroundAttachment="fixed"),SAKURA_URL){if(window.__sakuraInstance&&typeof window.__sakuraInstance.destroy=="function")try{window.__sakuraInstance.destroy()}catch{}const t=document.querySelector('script[src="'+SAKURA_URL+'"]');t&&t.remove();const e=document.createElement("script");e.src=SAKURA_URL,e.onload=()=>{window.__sakuraInstance=!0},document.body.appendChild(e)}if(PARTICLES_SCRIPT_URL&&PARTICLES_CONFIG_URL){let e=document.getElementById("particles-js");if(e||(e=document.createElement("div"),e.id="particles-js",document.body.prepend(e)),window.pJSDom&&window.pJSDom.length&&(window.pJSDom.forEach(e=>{e.pJS&&e.pJS.fn&&e.pJS.fn.vendors&&e.pJS.fn.vendors.destroypJS&&e.pJS.fn.vendors.destroypJS()}),window.pJSDom=[]),window.__particlesScriptLoaded)window.particlesJS&&setTimeout(()=>{window.particlesJS&&document.getElementById("particles-js")&&window.particlesJS.load("particles-js",PARTICLES_CONFIG_URL)},100);else{window.__particlesScriptLoaded=!0;const e=document.createElement("script");e.src=PARTICLES_SCRIPT_URL,e.onload=()=>{window.particlesJS&&window.particlesJS.load("particles-js",PARTICLES_CONFIG_URL)},document.body.appendChild(e)}}}function initAll(){initTocHide(),initScrollTop(),initCodeMoreBox(),initBackground(),window.Stack&&typeof window.Stack.init=="function"&&window.Stack.init()}initAll(),function(){if(window.__aplayerInstance)return;const a=document.getElementById("aplayer");if(!a||!window.APlayer)return;const c="https://0607pass.github.io/Blog/",n=e=>`${c}mp3/${encodeURIComponent(e)}`,s=[{name:"可惜没如果",artist:"林俊杰",url:n("林俊杰-可惜没如果.mp3"),cover:"https://picsum.photos/200/200?random=13"},{name:"查无此字",artist:"林奕匡",url:n("查无此字-林奕匡#eQSOo.mp3"),cover:"https://picsum.photos/200/200?random=11"},{name:"我怀念的",artist:"孙燕姿",url:n("孙燕姿-我怀念的.mp3"),cover:"https://picsum.photos/200/200?random=12"},{name:"老男孩",artist:"筷子兄弟",url:n("筷子兄弟-老男孩.mp3"),cover:"https://picsum.photos/200/200?random=14"}];if(!s.length)return;const r="aplayer-play-info";let o=null;try{const e=localStorage.getItem(r);o=e?JSON.parse(e):null}catch(e){console.error("APlayer restore parse error",e)}const t=new APlayer({container:a,fixed:!0,autoplay:!1,lrcType:0,theme:"#409EFF",audio:s});window.__aplayerInstance=t;const i=()=>{if(!t.audio)return;localStorage.setItem(r,JSON.stringify({index:t.list.index||0,currentTime:t.audio.currentTime||0,paused:t.audio.paused}))};if(window.addEventListener("beforeunload",i),window.addEventListener("pagehide",i),document.addEventListener("visibilitychange",()=>{document.visibilityState==="hidden"&&i()}),o){const{index:e=0,currentTime:n=0,paused:i=!0}=o;t.on("canplay",function o(){t.off("canplay",o);try{e>=0&&e<s.length&&t.list.switch(e),t.seek(n||0),i===!1?t.play():t.pause()}catch(e){console.error("APlayer restore failed",e)}})}}(),function(){if(window.__pjaxInstance||!window.Pjax)return;if(window.Pjax&&window.Pjax.prototype){const e=window.Pjax.prototype.handleResponse;window.Pjax.prototype.handleResponse=function(t,n,s,o){try{if(n&&n.responseText&&n.responseText.match("<html")){const t=new DOMParser,s=t.parseFromString(n.responseText,"text/html"),e=s.body.className;e&&document.body.className!==e&&(document.body.className=e)}}catch(e){console.warn("PJAX handleResponse error:",e)}return e.call(this,t,n,s,o)}}window.__pjaxInstance=new Pjax({selectors:["title",".main-container"],cacheBust:!1}),document.addEventListener("pjax:complete",()=>{setTimeout(()=>{initTocHide(),initScrollTop(),initCodeMoreBox(),initBackground(),window.Stack&&typeof window.Stack.init=="function"&&window.Stack.init()},50)}),document.addEventListener("pjax:send",()=>{const e=document.getElementById("particles-js");e&&(e.style.display="block"),BG_IMAGE_URL&&document.body&&(document.body.style.backgroundImage=`url(${BG_IMAGE_URL})`,document.body.style.backgroundRepeat="no-repeat",document.body.style.backgroundPosition="center top",document.body.style.backgroundSize="cover",document.body.style.backgroundAttachment="fixed")})}()</script></body></html>
