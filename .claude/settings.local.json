@@ -23,7 +23,12 @@
       "Bash(if:*)",
       "Bash(move:*)",
       "Bash(ren \"Spring AI 集成 OpenGauss 实现 RAG\" \"spring-ai-opengauss-rag\":*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(find:*)",
+      "Bash(Get-ChildItem:*)",
+      "Bash(ForEach-Object { Select-String -Path $_.FullName -Pattern \"最后更新于 0001-01-01\" }:*)",
+      "Bash(Select-Object:*)"
     ]
   }
 }

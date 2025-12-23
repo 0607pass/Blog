@@ -1,6 +1,6 @@
 +++
 date = '2025-12-22T13:52:39+08:00'
-draft = true
+draft = false
 title = 'Spring Boot 3.x 整合RocketMQ'
 +++
 
