@@ -2,6 +2,7 @@
 title = '2025 产品路线图'
 description = '三阶段推进个人品牌、自动化组件与商业化验证。'
 date = 2024-12-01T09:00:00+08:00
+lastmod = 2025-12-08T14:32:56+08:00
 draft = true
 tags = ['Roadmap', '产品思考']
 categories = ['路线图']

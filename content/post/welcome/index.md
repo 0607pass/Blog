@@ -2,6 +2,7 @@
 title: "欢迎来到我的 Hugo 博客"
 description: "记录 AI 开发、独立产品与生活方式的长期博客计划。"
 date: 2024-11-28T10:00:00+08:00
+lastmod: 2025-12-08T21:04:30+08:00
 draft: true
 tags: ['Hugo', '独立开发', 'AI 笔记']
 categories: ['产品进展']
