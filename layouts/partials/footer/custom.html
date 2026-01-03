@@ -183,6 +183,33 @@
     .aplayer {
         z-index: 9999 !important;
     }
+
+    /* 修复纯图片文章的抖动问题 */
+    .article-content p:has(> img:only-child) {
+        line-height: 0 !important;
+        margin-bottom: 20px !important;
+    }
+
+    /* 确保画廊图片有正确的显示 */
+    .article-content figure.gallery-image {
+        margin: 0;
+        padding: 0;
+        display: block;
+    }
+
+    /* PhotoSwipe 关闭时的过渡保护 */
+    .pswp {
+        transition: none !important;
+    }
+
+    /* 防止图片链接跳动 */
+    .article-content a[href*=".png"],
+    .article-content a[href*=".jpg"],
+    .article-content a[href*=".jpeg"],
+    .article-content a[href*=".gif"] {
+        display: inline-block;
+        line-height: 0;
+    }
 </style>
 
 <!-- APlayer 音乐播放器 -->
@@ -190,6 +217,8 @@
 <div id="aplayer"></div>
 <script src="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script>
+<!-- 图片画廊修复 - 解决纯图片文章抖动问题 -->
+<script src="{{ "js/gallery-fix.js" | relURL }}"></script>
 
 <script>
     // 预先定义背景URL常量供JS使用
@@ -353,6 +382,10 @@
         if (window.Stack && typeof window.Stack.init === 'function') {
             window.Stack.init();
         }
+        // 图片画廊修复已在外部脚本中处理
+        if (window.applyGalleryFix) {
+            window.applyGalleryFix();
+        }
     }
 
     // 初始化所有功能
@@ -472,6 +505,7 @@
                 if (window.Stack && typeof window.Stack.init === 'function') {
                     window.Stack.init();
                 }
+                // 图片画廊修复已在外部脚本中处理（通过事件监听）
             }, 50);
         });
 
