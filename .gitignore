@@ -5,3 +5,9 @@ resources/_gen/
 Thumbs.db
 需求.md
 
+.vscode/
+.idea/
+*.log
+*.claude
+.claude/
+CLAUDE.md
