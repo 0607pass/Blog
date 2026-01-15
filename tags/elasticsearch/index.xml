@@ -1,0 +1,842 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Elasticsearch on XFFF 的独立博客</title><link>https://0607pass.github.io/Blog/tags/elasticsearch/</link><description>Recent content in Elasticsearch on XFFF 的独立博客</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><copyright>© {year} XFFF</copyright><lastBuildDate>Sun, 04 Jan 2026 21:32:26 +0800</lastBuildDate><atom:link href="https://0607pass.github.io/Blog/tags/elasticsearch/index.xml" rel="self" type="application/rss+xml"/><item><title>倒排索引与分词机制</title><link>https://0607pass.github.io/Blog/p/%E5%80%92%E6%8E%92%E7%B4%A2%E5%BC%95%E4%B8%8E%E5%88%86%E8%AF%8D%E6%9C%BA%E5%88%B6/</link><pubDate>Sun, 04 Jan 2026 21:32:26 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/%E5%80%92%E6%8E%92%E7%B4%A2%E5%BC%95%E4%B8%8E%E5%88%86%E8%AF%8D%E6%9C%BA%E5%88%B6/</guid><description>&lt;img src="https://0607pass.github.io/Blog/images/postCover/es.png" alt="Featured image of post 倒排索引与分词机制" /&gt;&lt;hr&gt;
+&lt;h1 id="elasticsearch-核心原理倒排索引与分词机制"&gt;Elasticsearch 核心原理：倒排索引与分词机制
+&lt;/h1&gt;&lt;p&gt;倒排索引（Inverted Index）是 Elasticsearch 全文搜索能力的基础，也是搜索引擎普遍采用的一种高效数据结构。通过倒排索引，Elasticsearch 可以快速定位包含某个关键词的文档，极大地提升了搜索性能。&lt;/p&gt;
+&lt;h2 id="1-什么是倒排索引"&gt;1. 什么是倒排索引？
+&lt;/h2&gt;&lt;p&gt;&lt;strong&gt;倒排索引&lt;/strong&gt;是从&lt;strong&gt;关键词到文档&lt;/strong&gt;的映射。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;正排索引（Forward Index）：&lt;/strong&gt; 存储的是“文档 ID 内容”，类似于书的目录。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;倒排索引（Inverted Index）：&lt;/strong&gt; 存储的是“关键词 文档 ID 列表”，类似于书末尾的索引关键词表。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="简单示例"&gt;简单示例
+&lt;/h3&gt;&lt;p&gt;假设有以下三个文档：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;文档 1:&lt;/strong&gt; Elasticsearch 是分布式引擎&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;文档 2:&lt;/strong&gt; 分布式系统的核心是搜索&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;文档 3:&lt;/strong&gt; 搜索引擎的未来是智能化&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;生成的倒排索引如下表：&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;关键词&lt;/th&gt;
+&lt;th&gt;文档 ID 列表&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;elasticsearch&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;分布式&lt;/td&gt;
+&lt;td&gt;1, 2&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;系统&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;核心&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;搜索&lt;/td&gt;
+&lt;td&gt;2, 3&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;引擎&lt;/td&gt;
+&lt;td&gt;1, 3&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;智能化&lt;/td&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;效果：&lt;/strong&gt; 当用户搜索“引擎”时，Elasticsearch 无需扫描所有文档，直接通过索引即可锁定文档 1 和 3。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2 id="2-倒排索引的构建过程"&gt;2. 倒排索引的构建过程
+&lt;/h2&gt;&lt;p&gt;Elasticsearch 构建倒排索引主要分为以下三个步骤：&lt;/p&gt;
+&lt;h3 id="步骤一分词tokenization"&gt;步骤一：分词（Tokenization）
+&lt;/h3&gt;&lt;p&gt;将文本内容拆分为独立的单词或短语。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;原语句：&lt;/strong&gt; &lt;code&gt;Elasticsearch 是分布式引擎&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;分词结果：&lt;/strong&gt; &lt;code&gt;[Elasticsearch, 是, 分布式, 引擎]&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="步骤二归一化normalization"&gt;步骤二：归一化（Normalization）
+&lt;/h3&gt;&lt;p&gt;对分词结果进行标准化处理，提高匹配成功率：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;转小写：&lt;/strong&gt; &lt;code&gt;Elasticsearch&lt;/code&gt; &lt;code&gt;elasticsearch&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;去除停用词：&lt;/strong&gt; 删除 “的”、“是” 等对搜索贡献较小的词。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;词干提取：&lt;/strong&gt; 将词汇归为基本形式（如 &lt;code&gt;running&lt;/code&gt; &lt;code&gt;run&lt;/code&gt;）。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="步骤三创建并存储索引"&gt;步骤三：创建并存储索引
+&lt;/h3&gt;&lt;p&gt;根据处理后的词项建立映射关系，最终形成可供查询的结构：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;elasticsearch&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;分布式&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;引擎&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;搜索&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;hr&gt;
+&lt;h2 id="3-用户发起搜索的过程"&gt;3. 用户发起搜索的过程
+&lt;/h2&gt;&lt;p&gt;当用户执行查询（如搜索“分布式搜索”）时，系统遵循以下逻辑：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;解析查询条件：&lt;/strong&gt; 将搜索词解析为分词结果 &lt;code&gt;[分布式, 搜索]&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;查找倒排索引：&lt;/strong&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;分布式&lt;/code&gt; &lt;code&gt;[1, 2]&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;搜索&lt;/code&gt; &lt;code&gt;[2, 3]&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol start="3"&gt;
+&lt;li&gt;&lt;strong&gt;合并结果：&lt;/strong&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;AND 查询（交集）：&lt;/strong&gt; 返回 &lt;code&gt;[2]&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;OR 查询（并集）：&lt;/strong&gt; 返回 &lt;code&gt;[1, 2, 3]&lt;/code&gt;（默认行为）。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol start="4"&gt;
+&lt;li&gt;&lt;strong&gt;相关性排序：&lt;/strong&gt; 根据相关性评分（如 TF-IDF 或 BM25）对结果排序并返回。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id="4-elasticsearch-分词器analyzer"&gt;4. Elasticsearch 分词器（Analyzer）
+&lt;/h2&gt;&lt;p&gt;分词器是处理文本的核心组件，决定了数据如何被“切分”和“清洗”。&lt;/p&gt;
+&lt;h3 id="分词器的三个组成部分"&gt;分词器的三个组成部分
+&lt;/h3&gt;&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;字符过滤（Character Filters）：&lt;/strong&gt; 预处理，如去除 HTML 标签。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;分词（Tokenizer）：&lt;/strong&gt; 核心切分逻辑，按空格或符号拆分。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;词项过滤（Token Filters）：&lt;/strong&gt; 后处理，如转小写、去停用词。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3 id="常见内置分词器对比"&gt;常见内置分词器对比
+&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;分词器类型&lt;/th&gt;
+&lt;th&gt;特点说明&lt;/th&gt;
+&lt;th&gt;示例输入&lt;/th&gt;
+&lt;th&gt;分词结果&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Standard&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;默认分词器，按标准语法切分并转小写&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;Elasticsearch is powerful.&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;[&amp;quot;elasticsearch&amp;quot;, &amp;quot;is&amp;quot;, &amp;quot;powerful&amp;quot;]&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Simple&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;仅按非字母字符切分，过滤数字和符号&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;Text123 data!&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;[&amp;quot;text&amp;quot;, &amp;quot;data&amp;quot;]&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Whitespace&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;仅以空格分词，不处理大小写&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;The quick&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;[&amp;quot;The&amp;quot;, &amp;quot;quick&amp;quot;]&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Keyword&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;不分词，将整条输入作为一个词项&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;user_id:123&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;[&amp;quot;user_id:123&amp;quot;]&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Stop&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;在 Standard 基础上移除停用词&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;The quick&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;[&amp;quot;quick&amp;quot;]&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id="验证分词效果"&gt;验证分词效果
+&lt;/h3&gt;&lt;p&gt;在 Elasticsearch Dev Tools 中，可以使用 &lt;code&gt;_analyze&lt;/code&gt; API 进行测试：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;POST /_analyze
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;analyzer&amp;#34;: &amp;#34;standard&amp;#34;,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;text&amp;#34;: &amp;#34;Elasticsearch is powerful.&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;这份关于 &lt;strong&gt;IK 中文分词器&lt;/strong&gt; 的详细教程已整理为 Markdown 格式。我已按照您的要求，将示例内容替换为更具通用性的技术文本（去除了原有的特定名称）。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h1 id="elasticsearch-ik-中文分词器详解"&gt;Elasticsearch ：IK 中文分词器详解
+&lt;/h1&gt;&lt;p&gt;在处理英文文本时，由于词与词之间有空格，按空格分词非常方便。但中文句子是连续的，默认的 &lt;code&gt;standard&lt;/code&gt; 分词器只能简单地“一字一分”，无法识别中文词汇。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;IK 分词器（IK Analyzer）&lt;/strong&gt; 是一个专门为中文设计的分词插件，支持细粒度分词和智能分词，是目前 Elasticsearch 中文搜索场景下的首选方案。&lt;/p&gt;
+&lt;h2 id="1-什么是-ik-中文分词器"&gt;1. 什么是 IK 中文分词器？
+&lt;/h2&gt;&lt;p&gt;IK 分词器是基于 Apache Lucene 的中文分词插件，专为 Elasticsearch 提供支持。它能根据内置词典和语义规则，将中文句子拆分为具备实际意义的词条。&lt;/p&gt;
+&lt;h3 id="主要特点"&gt;主要特点
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;两种模式：&lt;/strong&gt; 支持细粒度分词（&lt;code&gt;ik_max_word&lt;/code&gt;）和智能分词（&lt;code&gt;ik_smart&lt;/code&gt;）。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;扩展性：&lt;/strong&gt; 支持用户自定义扩展词典，添加行业术语或网络流行词。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;动态调整：&lt;/strong&gt; 支持热更新词典，无需重启服务即可更新分词规则。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id="2-安装-ik-插件docker-环境"&gt;2. 安装 IK 插件（Docker 环境）
+&lt;/h2&gt;&lt;h3 id="第一步进入容器内部"&gt;第一步：进入容器内部
+&lt;/h3&gt;&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;docker &lt;span class="nb"&gt;exec&lt;/span&gt; -it es7 /bin/sh
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;进入后通过 &lt;code&gt;ls&lt;/code&gt; 命令可以确认当前处于 Elasticsearch 的根目录。&lt;/p&gt;
+&lt;h3 id="第二步执行安装命令"&gt;第二步：执行安装命令
+&lt;/h3&gt;&lt;p&gt;运行以下命令下载并安装 IK 插件（请根据您的 ES 版本调整版本号）：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;bin/elasticsearch-plugin install https://get.infini.cloud/elasticsearch/analysis-ik/7.3.0
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;安装过程中提示确认时，输入 &lt;code&gt;y&lt;/code&gt; 并回车。&lt;/p&gt;
+&lt;h3 id="第三步备份插件文件可选但推荐"&gt;第三步：备份插件文件（可选但推荐）
+&lt;/h3&gt;&lt;p&gt;退出容器后，将插件及配置文件复制到宿主机，防止容器删除后数据丢失：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="nb"&gt;exit&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="c1"&gt;# 复制到宿主机对应目录（示例路径，请根据实际情况修改）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;docker cp es7:/usr/share/elasticsearch/plugins/analysis-ik /your/path/plugins
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;docker cp es7:/usr/share/elasticsearch/config/analysis-ik /your/path/config
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="第四步重启服务"&gt;第四步：重启服务
+&lt;/h3&gt;&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;docker restart es7
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;&lt;strong&gt;验证：&lt;/strong&gt; 查看容器日志，若看到 &lt;code&gt;loaded plugin [analysis-ik]&lt;/code&gt; 字样，说明加载成功。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id="3-ik-分词模式对比"&gt;3. IK 分词模式对比
+&lt;/h2&gt;&lt;p&gt;IK 分词器提供了两种核心分词模式：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;模式&lt;/th&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;分词策略&lt;/th&gt;
+&lt;th&gt;适用场景&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;&lt;code&gt;ik_smart&lt;/code&gt;&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;智能分词&lt;/td&gt;
+&lt;td&gt;粗粒度切分，追求语义完整性&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;搜索查询时&lt;/strong&gt;使用&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;&lt;code&gt;ik_max_word&lt;/code&gt;&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;细粒度分词&lt;/td&gt;
+&lt;td&gt;穷举所有可能的组合，词量大&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;建立索引时&lt;/strong&gt;使用&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id="4-效果演示"&gt;4. 效果演示
+&lt;/h2&gt;&lt;h3 id="场景一智能分词ik_smart"&gt;场景一：智能分词（ik_smart）
+&lt;/h3&gt;&lt;p&gt;我们将测试一段技术描述文字。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;请求：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;POST /_analyze
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;analyzer&amp;#34;: &amp;#34;ik_smart&amp;#34;,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;text&amp;#34;: &amp;#34;分布式系统架构如何设计？&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;&lt;strong&gt;预期分词结果：&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;分布式&lt;/code&gt; / &lt;code&gt;系统&lt;/code&gt; / &lt;code&gt;架构&lt;/code&gt; / &lt;code&gt;如何&lt;/code&gt; / &lt;code&gt;设计&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h3 id="场景二默认分词器对比standard"&gt;场景二：默认分词器对比（standard）
+&lt;/h3&gt;&lt;p&gt;对比 ES 默认分词器对中文的处理方式。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;请求：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;POST /_analyze
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;analyzer&amp;#34;: &amp;#34;standard&amp;#34;,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;text&amp;#34;: &amp;#34;分布式系统架构如何设计？&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;&lt;strong&gt;预期分词结果（逐字拆分）：&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;分&lt;/code&gt; / &lt;code&gt;布&lt;/code&gt; / &lt;code&gt;式&lt;/code&gt; / &lt;code&gt;系&lt;/code&gt; / &lt;code&gt;统&lt;/code&gt; / &lt;code&gt;架&lt;/code&gt; / &lt;code&gt;构&lt;/code&gt; / &lt;code&gt;如&lt;/code&gt; / &lt;code&gt;何&lt;/code&gt; / &lt;code&gt;设&lt;/code&gt; / &lt;code&gt;计&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h3 id="场景三细粒度分词ik_max_word"&gt;场景三：细粒度分词（ik_max_word）
+&lt;/h3&gt;&lt;p&gt;对于复杂的专有名词，&lt;code&gt;ik_max_word&lt;/code&gt; 会进行穷举。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;请求：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;POST /_analyze
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;analyzer&amp;#34;: &amp;#34;ik_max_word&amp;#34;,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;text&amp;#34;: &amp;#34;北京互联网科技公司&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;p&gt;&lt;strong&gt;预期分词结果：&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;北京&lt;/code&gt; / &lt;code&gt;互联网&lt;/code&gt; / &lt;code&gt;互联&lt;/code&gt; / &lt;code&gt;网&lt;/code&gt; / &lt;code&gt;科技公司&lt;/code&gt; / &lt;code&gt;科技&lt;/code&gt; / &lt;code&gt;公司&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;p&gt;IK 分词器通过 &lt;code&gt;ik_smart&lt;/code&gt; 保证了搜索的&lt;strong&gt;准确性&lt;/strong&gt;，通过 &lt;code&gt;ik_max_word&lt;/code&gt; 保证了索引的&lt;strong&gt;覆盖面&lt;/strong&gt;。在实际业务中，通常采取“索引时细粒度，搜索时智能化”的策略，以达到最佳的搜索体验。&lt;/p&gt;
+&lt;hr&gt;</description></item><item><title>Elasticsearch 数据类型</title><link>https://0607pass.github.io/Blog/p/elasticsearch-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/</link><pubDate>Sun, 04 Jan 2026 21:17:02 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/elasticsearch-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/</guid><description>&lt;img src="https://0607pass.github.io/Blog/images/postCover/es.png" alt="Featured image of post Elasticsearch 数据类型" /&gt;&lt;h2 id="elasticsearch-数据类型"&gt;&lt;strong&gt;Elasticsearch 数据类型&lt;/strong&gt;
+&lt;/h2&gt;&lt;p&gt;在 Elasticsearch 中，数据类型 决定了字段的存储和索引方式，以及它们支持的查询类型和操作方式。正确理解和选择数据类型，是设计高效索引和搜索的重要前提。&lt;/p&gt;
+&lt;h3 id="数据类型分类"&gt;数据类型分类
+&lt;/h3&gt;&lt;p&gt;Elasticsearch 的字段数据类型主要分为以下几类：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;基本数据类型：数值、字符串、布尔值等。&lt;/li&gt;
+&lt;li&gt;复杂数据类型：如对象、嵌套对象。&lt;/li&gt;
+&lt;li&gt;地理数据类型：用于存储和搜索地理位置相关的数据。&lt;/li&gt;
+&lt;li&gt;特殊数据类型：专门为特定场景设计的数据类型，如 IP 地址、范围类型等。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;这份关于 Elasticsearch 数据类型的整理已经按照 Markdown 格式进行了优化，增加了清晰的层级结构、代码块标注以及对比说明，方便你直接阅读或存档。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id="1-基本数据类型"&gt;1. 基本数据类型
+&lt;/h2&gt;&lt;h3 id="文本类型"&gt;文本类型
+&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;类型&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;th&gt;应用场景&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;&lt;code&gt;text&lt;/code&gt;&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;用于全文搜索。支持分词（Analysis）并建立倒排索引。&lt;/td&gt;
+&lt;td&gt;邮件正文、笔记标题、产品描述。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;&lt;code&gt;keyword&lt;/code&gt;&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;用于精确匹配。不参与分词，直接建立索引。&lt;/td&gt;
+&lt;td&gt;状态码（OK/Fail）、分类标签、邮编、ID。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;示例定义：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;mappings&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;properties&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;title&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;text&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;},&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;status&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;keyword&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="数值类型"&gt;数值类型
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;整型&lt;/strong&gt;：&lt;code&gt;integer&lt;/code&gt; (32位), &lt;code&gt;long&lt;/code&gt; (64位), &lt;code&gt;short&lt;/code&gt; (16位), &lt;code&gt;byte&lt;/code&gt; (8位)。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;浮点型&lt;/strong&gt;：&lt;code&gt;double&lt;/code&gt; (双精度), &lt;code&gt;float&lt;/code&gt; (单精度), &lt;code&gt;half_float&lt;/code&gt;, &lt;code&gt;scaled_float&lt;/code&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;示例定义：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;age&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;integer&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;&lt;span class="err"&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;price&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;double&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="布尔与日期"&gt;布尔与日期
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;boolean&lt;/code&gt;&lt;/strong&gt;：存储 &lt;code&gt;true&lt;/code&gt; 或 &lt;code&gt;false&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;date&lt;/code&gt;&lt;/strong&gt;：存储日期和时间。默认支持 ISO 8601 格式，也可以自定义格式。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;示例定义：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;created_at&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;date&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;format&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;yyyy-MM-dd HH:mm:ss||epoch_millis&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;hr&gt;
+&lt;h2 id="2-复杂数据类型"&gt;2. 复杂数据类型
+&lt;/h2&gt;&lt;h3 id="对象类型-object"&gt;对象类型 (&lt;code&gt;object&lt;/code&gt;)
+&lt;/h3&gt;&lt;p&gt;用于存储单个 JSON 对象。在 ES 内部会被扁平化处理。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;span class="lnt"&gt;7
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;user&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;object&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;properties&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;name&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;text&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;},&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;age&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;integer&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="嵌套类型-nested"&gt;嵌套类型 (&lt;code&gt;nested&lt;/code&gt;)
+&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;重要&lt;/strong&gt;：如果需要存储“对象数组”并保持对象内字段的关联性，必须使用 &lt;code&gt;nested&lt;/code&gt;。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;span class="lnt"&gt;7
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;comments&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;nested&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;properties&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;author&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;keyword&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;},&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;content&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;text&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;hr&gt;
+&lt;h2 id="3-地理数据类型"&gt;3. 地理数据类型
+&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;&lt;code&gt;geo_point&lt;/code&gt;&lt;/strong&gt;：存储经纬度坐标对。支持距离排序、地理围栏查询。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;em&gt;示例数据&lt;/em&gt;：&lt;code&gt;&amp;quot;location&amp;quot;: { &amp;quot;lat&amp;quot;: 40.71, &amp;quot;lon&amp;quot;: -74.00 }&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;&lt;code&gt;geo_shape&lt;/code&gt;&lt;/strong&gt;：存储复杂的几何图形（如多边形 &lt;code&gt;Polygon&lt;/code&gt;、线条 &lt;code&gt;LineString&lt;/code&gt;）。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;em&gt;示例场景&lt;/em&gt;：行政区划边界、航线轨迹。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id="4-特殊数据类型"&gt;4. 特殊数据类型
+&lt;/h2&gt;&lt;h3 id="ip-地址-ip"&gt;IP 地址 (&lt;code&gt;ip&lt;/code&gt;)
+&lt;/h3&gt;&lt;p&gt;支持 IPv4 和 IPv6，允许针对 IP 段进行搜索（CIDR 检索）。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;client_ip&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nt"&gt;&amp;#34;type&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s2"&gt;&amp;#34;ip&amp;#34;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="范围类型-range"&gt;范围类型 (&lt;code&gt;range&lt;/code&gt;)
+&lt;/h3&gt;&lt;p&gt;存储一个区间值。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;子类型&lt;/strong&gt;：&lt;code&gt;integer_range&lt;/code&gt;, &lt;code&gt;float_range&lt;/code&gt;, &lt;code&gt;long_range&lt;/code&gt;, &lt;code&gt;date_range&lt;/code&gt;, &lt;code&gt;ip_range&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;数据示例&lt;/strong&gt;：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-json" data-lang="json"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="s2"&gt;&amp;#34;price_range&amp;#34;&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;gte&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;100&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt; &lt;span class="nt"&gt;&amp;#34;lte&amp;#34;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;200&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;hr&gt;
+&lt;h2 id="总结与建议"&gt;总结与建议
+&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;需求&lt;/th&gt;
+&lt;th&gt;推荐类型&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;需要分词搜索&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;text&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;需要聚合（Aggregation）或排序&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;keyword&lt;/code&gt; 或数值类型&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;存储 JSON 对象且需要独立查询数组成员&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;nested&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;存储经纬度&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;geo_point&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;多字段配置&lt;/strong&gt;：同一个字段可以既是 &lt;code&gt;text&lt;/code&gt;（用于搜索）又是 &lt;code&gt;keyword&lt;/code&gt;（用于聚合）。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;明确定义&lt;/strong&gt;：尽量避免依靠 ES 的动态映射（Dynamic Mapping），手动定义 Mapping 能更好地控制存储空间和索引效率。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/blockquote&gt;</description></item><item><title>Elasticsearch 核心概念</title><link>https://0607pass.github.io/Blog/p/elasticsearch-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5/</link><pubDate>Sat, 03 Jan 2026 22:11:02 +0800</pubDate><guid>https://0607pass.github.io/Blog/p/elasticsearch-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5/</guid><description>&lt;img src="https://0607pass.github.io/Blog/images/postCover/es.png" alt="Featured image of post Elasticsearch 核心概念" /&gt;&lt;hr&gt;
+&lt;h1 id="-elasticsearch-核心知识手册"&gt;🚀 Elasticsearch 核心知识手册
+&lt;/h1&gt;&lt;h2 id="1-什么是-elasticsearch"&gt;1. 什么是 Elasticsearch？
+&lt;/h2&gt;&lt;p&gt;Elasticsearch 是一个基于 &lt;strong&gt;Apache Lucene&lt;/strong&gt; 构建的开源、分布式搜索和分析引擎。它能够对海量数据进行近实时的存储、搜索和分析。&lt;/p&gt;
+&lt;h3 id="核心特性"&gt;核心特性
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;分布式架构&lt;/strong&gt;：天生支持集群模式，可水平扩展至数百个节点。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;实时搜索&lt;/strong&gt;：数据从写入到可被搜索仅需秒级延迟。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;全文检索&lt;/strong&gt;：支持复杂的模糊匹配、分词、高亮显示。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;RESTful API&lt;/strong&gt;：通过标准的 HTTP 接口即可完成所有操作。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;高度可定制&lt;/strong&gt;：灵活的分词器、查询语法，适应多变业务。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id="2-核心概念对比"&gt;2. 核心概念对比
+&lt;/h2&gt;&lt;p&gt;为了方便理解，我们可以将 Elasticsearch 的概念与传统关系型数据库（如 MySQL）进行类比：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Elasticsearch&lt;/th&gt;
+&lt;th&gt;关系型数据库 (RDBMS)&lt;/th&gt;
+&lt;th&gt;说明&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Index (索引)&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Table (表)&lt;/td&gt;
+&lt;td&gt;数据的逻辑容器&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Document (文档)&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Row (行)&lt;/td&gt;
+&lt;td&gt;最小的数据单位（JSON 格式）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Field (字段)&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Column (列)&lt;/td&gt;
+&lt;td&gt;文档的属性&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Mapping (映射)&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Schema (表结构)&lt;/td&gt;
+&lt;td&gt;定义字段类型及其行为&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;DSL (查询语言)&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;SQL&lt;/td&gt;
+&lt;td&gt;搜索数据的专用语言&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id="扩展概念"&gt;扩展概念：
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Cluster（集群）&lt;/strong&gt;：由一个或多个节点组成，共同承担压力。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Node（节点）&lt;/strong&gt;：集群中的单个运行实例。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Shard（分片）&lt;/strong&gt;：将索引水平切分，分布在不同节点以提升性能。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Replica（副本）&lt;/strong&gt;：分片的拷贝，提供冗余备份并提升查询吞吐量。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id="3-快速部署-docker"&gt;3. 快速部署 (Docker)
+&lt;/h2&gt;&lt;h3 id="启动-elasticsearch"&gt;启动 Elasticsearch
+&lt;/h3&gt;&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt; 1
+&lt;/span&gt;&lt;span class="lnt"&gt; 2
+&lt;/span&gt;&lt;span class="lnt"&gt; 3
+&lt;/span&gt;&lt;span class="lnt"&gt; 4
+&lt;/span&gt;&lt;span class="lnt"&gt; 5
+&lt;/span&gt;&lt;span class="lnt"&gt; 6
+&lt;/span&gt;&lt;span class="lnt"&gt; 7
+&lt;/span&gt;&lt;span class="lnt"&gt; 8
+&lt;/span&gt;&lt;span class="lnt"&gt; 9
+&lt;/span&gt;&lt;span class="lnt"&gt;10
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;docker run -d &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; --name es7 &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -p 9200:9200 -p 9300:9300 &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -e &lt;span class="s2"&gt;&amp;#34;discovery.type=single-node&amp;#34;&lt;/span&gt; &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -e &lt;span class="nv"&gt;ES_JAVA_OPTS&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;#34;-Xms1024m -Xmx1024m&amp;#34;&lt;/span&gt; &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -v /home/xfff/docker/elasticsearch/config:/usr/share/elasticsearch/config &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -v /home/xfff/docker/elasticsearch/data:/usr/share/elasticsearch/data &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -v /home/xfff/docker/elasticsearch/plugins:/usr/share/elasticsearch/plugins &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; -v /home/xfff/docker/elasticsearch/logs:/usr/share/elasticsearch/logs &lt;span class="se"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="se"&gt;&lt;/span&gt; elasticsearch:7.3.0
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="启动-kibana-可视化工具"&gt;启动 Kibana 可视化工具
+&lt;/h3&gt;&lt;p&gt;Kibana 用于数据探索和 Dev Tools 调试。&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;启动容器&lt;/strong&gt;：&lt;code&gt;docker run -d --name kibana -p 5601:5601 kibana:7.3.0&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;配置&lt;/strong&gt;：修改 &lt;code&gt;kibana.yml&lt;/code&gt; 配置文件。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-yaml" data-lang="yaml"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="nt"&gt;server.name&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l"&gt;kibana&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="w"&gt;&lt;/span&gt;&lt;span class="nt"&gt;server.host&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;#34;0.0.0.0&amp;#34;&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="w"&gt;&lt;/span&gt;&lt;span class="nt"&gt;elasticsearch.hosts&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;#34;http://&amp;lt;宿主机IP&amp;gt;:9200&amp;#34;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="w"&gt;&lt;/span&gt;&lt;span class="nt"&gt;i18n.locale&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;#34;zh-CN&amp;#34;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="c"&gt;# 设置中文界面&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;ol start="3"&gt;
+&lt;li&gt;&lt;strong&gt;访问&lt;/strong&gt;：&lt;code&gt;http://服务器IP:5601&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id="4-基础语法操作-dev-tools"&gt;4. 基础语法操作 (Dev Tools)
+&lt;/h2&gt;&lt;h3 id="41-索引管理"&gt;4.1 索引管理
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;创建索引（指定分片与副本）&lt;/strong&gt;：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;span class="lnt"&gt;7
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;PUT /note
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;settings&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;number_of_shards&amp;#34;: 2,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;number_of_replicas&amp;#34;: 2
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;结构化创建（指定 Mapping）&lt;/strong&gt;：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt; 1
+&lt;/span&gt;&lt;span class="lnt"&gt; 2
+&lt;/span&gt;&lt;span class="lnt"&gt; 3
+&lt;/span&gt;&lt;span class="lnt"&gt; 4
+&lt;/span&gt;&lt;span class="lnt"&gt; 5
+&lt;/span&gt;&lt;span class="lnt"&gt; 6
+&lt;/span&gt;&lt;span class="lnt"&gt; 7
+&lt;/span&gt;&lt;span class="lnt"&gt; 8
+&lt;/span&gt;&lt;span class="lnt"&gt; 9
+&lt;/span&gt;&lt;span class="lnt"&gt;10
+&lt;/span&gt;&lt;span class="lnt"&gt;11
+&lt;/span&gt;&lt;span class="lnt"&gt;12
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;PUT /note
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;mappings&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;properties&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;title&amp;#34;: {&amp;#34;type&amp;#34;: &amp;#34;text&amp;#34;},
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;create_time&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;type&amp;#34;: &amp;#34;date&amp;#34;,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;format&amp;#34;: &amp;#34;yyyy-MM-dd HH:mm:ss&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="42-文档-crud"&gt;4.2 文档 CRUD
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;添加/全量更新&lt;/strong&gt;：&lt;code&gt;PUT /note/_doc/1 { &amp;quot;title&amp;quot;: &amp;quot;内容&amp;quot; }&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;指定字段更新&lt;/strong&gt;：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;POST /note/_update/1
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{ &amp;#34;doc&amp;#34;: { &amp;#34;title&amp;#34;: &amp;#34;新标题&amp;#34; } }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;强制创建（已存在则报错）&lt;/strong&gt;：&lt;code&gt;PUT /note/_create/1 { ... }&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;删除&lt;/strong&gt;：&lt;code&gt;DELETE /note/_doc/1&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id="5-高级搜索与过滤"&gt;5. 高级搜索与过滤
+&lt;/h2&gt;&lt;h3 id="51-分页与排序"&gt;5.1 分页与排序
+&lt;/h3&gt;&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;span class="lnt"&gt;7
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;GET /note/_search
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;query&amp;#34;: { &amp;#34;match_all&amp;#34;: {} },
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;from&amp;#34;: 0,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;size&amp;#34;: 10,
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;sort&amp;#34;: [ { &amp;#34;create_time&amp;#34;: { &amp;#34;order&amp;#34;: &amp;#34;desc&amp;#34; } } ]
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="52-核心查询区别match-vs-term"&gt;5.2 核心查询区别：Match vs Term
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;match&lt;/code&gt;&lt;/strong&gt;：全文检索。会将搜索词先分词，再匹配。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;term&lt;/code&gt;&lt;/strong&gt;：精确匹配。不分词，搜索词必须与索引中的词项完全一致。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;⚠️ 踩坑提示&lt;/strong&gt;：默认分词下，中文会被拆分为单个汉字。若用 &lt;code&gt;term&lt;/code&gt; 搜索“秋季”，而索引中只有“秋”和“季”，则无法匹配。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id="53-filter-过滤"&gt;5.3 Filter 过滤
+&lt;/h3&gt;&lt;p&gt;&lt;code&gt;filter&lt;/code&gt; 包含在 &lt;code&gt;bool&lt;/code&gt; 查询中，其特点是不计算相关性评分，&lt;strong&gt;性能更高且支持缓存&lt;/strong&gt;。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;span class="lnt"&gt;7
+&lt;/span&gt;&lt;span class="lnt"&gt;8
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;GET /note/_search
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;query&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;bool&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;filter&amp;#34;: { &amp;#34;match&amp;#34;: { &amp;#34;title&amp;#34;: &amp;#34;秋季&amp;#34; } }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h3 id="54-聚合查询-aggregation"&gt;5.4 聚合查询 (Aggregation)
+&lt;/h3&gt;&lt;p&gt;类似于 SQL 的 &lt;code&gt;GROUP BY&lt;/code&gt;。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;div class="chroma"&gt;
+&lt;table class="lntable"&gt;&lt;tr&gt;&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code&gt;&lt;span class="lnt"&gt;1
+&lt;/span&gt;&lt;span class="lnt"&gt;2
+&lt;/span&gt;&lt;span class="lnt"&gt;3
+&lt;/span&gt;&lt;span class="lnt"&gt;4
+&lt;/span&gt;&lt;span class="lnt"&gt;5
+&lt;/span&gt;&lt;span class="lnt"&gt;6
+&lt;/span&gt;&lt;span class="lnt"&gt;7
+&lt;/span&gt;&lt;span class="lnt"&gt;8
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class="lntd"&gt;
+&lt;pre tabindex="0" class="chroma"&gt;&lt;code class="language-http" data-lang="http"&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;GET /note/_search
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;aggs&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;group_by_time&amp;#34;: {
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; &amp;#34;terms&amp;#34;: { &amp;#34;field&amp;#34;: &amp;#34;create_time&amp;#34; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class="line"&gt;&lt;span class="cl"&gt;&lt;span class="err"&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;hr&gt;
+&lt;h2 id="6-应用场景"&gt;6. 应用场景
+&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;ELK 日志分析&lt;/strong&gt;：Logstash 收集 ES 存储 Kibana 展示。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;垂直搜索&lt;/strong&gt;：电商商品搜索、站内搜索。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;时序数据&lt;/strong&gt;：监控指标存储与实时告警。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;推荐系统&lt;/strong&gt;：基于聚合分析的用户画像分析。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;</description></item></channel></rss>
